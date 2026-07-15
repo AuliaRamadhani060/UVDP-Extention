@@ -1,0 +1,2 @@
+import{b as s}from"./browser-BoNqcQYh.js";async function n(a){return await s.runtime.sendMessage(a)}async function t(a){try{await s.runtime.sendMessage(a)}catch{}}async function r(a){try{await s.runtime.sendMessage(a)}catch{}}export{n as a,r as b,t as s};
+//# sourceMappingURL=messaging-C46JWWw6.js.map
