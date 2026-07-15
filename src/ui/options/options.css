@@ -1,0 +1,7 @@
+body { margin: 0; background: var(--bg); color: var(--text); }
+.opt { max-width: 620px; margin: 40px auto; padding: 0 var(--sp-4); font-family: var(--font); color: var(--text); }
+.opt__head { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); }
+.opt__head h1 { font-size: var(--fs-lg); }
+.opt__switch { display: flex; gap: var(--sp-2); }
+.opt__row { display: flex; align-items: center; gap: var(--sp-2); margin: var(--sp-4) 0; font-size: var(--fs-md); }
+.opt__row input[type="number"] { width: 100px; padding: var(--sp-1) var(--sp-2); background: var(--surface); color: var(--text); border: 1px solid var(--border); border-radius: var(--radius-sm); }

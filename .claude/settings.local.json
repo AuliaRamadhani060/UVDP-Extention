@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm --version)",
+      "Bash(npm install *)",
+      "Bash(npx tsc *)",
+      "Bash(TARGET=chrome npx vite build --outDir dist/chrome)",
+      "Bash(node -e ' *)",
+      "Bash(TARGET=firefox npx vite build --outDir dist/firefox)",
+      "Bash(node -e \"const m=require\\('./dist/chrome/manifest.json'\\); console.log\\('bg:',JSON.stringify\\(m.background\\)\\); console.log\\('cs worlds:',m.content_scripts.map\\(c=>c.world||'ISOLATED'\\)\\); console.log\\('perms:',m.permissions.join\\(','\\)\\)\")",
+      "Bash(node -e \"const m=require\\('./dist/firefox/manifest.json'\\); console.log\\('bg:',JSON.stringify\\(m.background\\)\\); console.log\\('gecko:',JSON.stringify\\(m.browser_specific_settings\\)\\)\")",
+      "Bash(node -e \"const p=require\\('./package.json'\\); console.log\\(JSON.stringify\\(p.dependencies,null,1\\)\\)\")",
+      "Bash(rm -f src/ui/popup/popup.ts)",
+      "Bash(node -e \"const m=require\\('./dist/chrome/manifest.json'\\); console.log\\(JSON.stringify\\(m.web_accessible_resources\\)\\)\")",
+      "Bash(rm -rf dist/chrome)",
+      "Bash(rm -rf dist/firefox)"
+    ]
+  }
+}

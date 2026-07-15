@@ -1,0 +1,15 @@
+.player { display: flex; flex-direction: column; height: 100vh; background: #000; color: var(--text); }
+.player__stage { flex: 1; display: grid; place-items: center; min-height: 0; background: #000; }
+.player__stage video { max-width: 100%; max-height: 100%; width: auto; height: 100%; }
+.player__bar {
+  display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3);
+  padding: var(--sp-3) var(--sp-4); background: var(--bg); border-top: 1px solid var(--border);
+  font-family: var(--font); flex-wrap: wrap;
+}
+.player__title { font-size: var(--fs-md); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.player__controls { display: flex; gap: var(--sp-3); align-items: center; }
+.ctl { display: inline-flex; align-items: center; gap: 6px; font-size: var(--fs-sm); color: var(--text-muted); }
+.ctl select { background: var(--bg-elev); color: var(--text); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 3px 6px; font: var(--fs-sm) var(--font); }
+.pipbtn { background: var(--bg-elev); color: var(--text); border: 1px solid var(--border-strong); border-radius: var(--radius-sm); padding: 5px 10px; font: 600 var(--fs-sm) var(--font); cursor: pointer; }
+.pipbtn[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: #fff; }
+.player__error { display: flex; align-items: center; gap: 6px; padding: var(--sp-3) var(--sp-4); color: var(--danger); font-family: var(--font); font-size: var(--fs-sm); background: var(--bg); }
