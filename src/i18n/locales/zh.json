@@ -66,5 +66,17 @@
   "ui.density": "密度",
   "stat.media": "媒体",
   "stat.streams": "流",
-  "stat.favorites": "收藏"
+  "stat.favorites": "收藏",
+  "nav.library": "媒体库",
+  "nav.player": "播放器",
+  "nav.downloads": "下载",
+  "nav.settings": "设置",
+  "cmd.open": "命令面板",
+  "cmd.placeholder": "搜索媒体或执行操作…",
+  "cmd.actions": "操作",
+  "cmd.downloadAll": "下载所有直接文件",
+  "cmd.copyAll": "复制所有链接",
+  "cmd.openManager": "打开媒体管理器",
+  "settings.openFull": "打开完整设置",
+  "settings.privacyNote": "隐私优先：令牌被隐去，网络观测绝不外传。不处理 DRM 内容。"
 }

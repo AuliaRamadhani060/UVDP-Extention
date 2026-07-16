@@ -32,6 +32,12 @@ async function openSidePanel(): Promise<void> {
   }
 }
 
+// Buka Media Manager (tab penuh).
+function openManager(): void {
+  browser.tabs.create({ url: browser.runtime.getURL('src/ui/manager/manager.html') });
+  window.close();
+}
+
 export function Popup() {
   const [items, setItems] = useState<MediaItem[]>([]);
 
@@ -60,7 +66,8 @@ export function Popup() {
           <div class="pop__name">{t('app.name')}</div>
           <div class="pop__count">{t('count.total', { total: items.length })}</div>
         </div>
-        <button class="pbtn" title="Panel" onClick={openSidePanel}><Icon.sidebar size={15} /></button>
+        <button class="pbtn pbtn--primary" title={t('cmd.openManager')} onClick={openManager}><Icon.sidebar size={15} /></button>
+        <button class="pbtn" title="Panel" onClick={openSidePanel}><Icon.film size={15} /></button>
         <ThemeSwitcher />
         <LanguageSwitcher />
       </header>

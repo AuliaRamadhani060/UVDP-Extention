@@ -66,5 +66,17 @@
   "ui.density": "Densidad",
   "stat.media": "Medios",
   "stat.streams": "Flujos",
-  "stat.favorites": "Favoritos"
+  "stat.favorites": "Favoritos",
+  "nav.library": "Biblioteca",
+  "nav.player": "Reproductor",
+  "nav.downloads": "Descargas",
+  "nav.settings": "Ajustes",
+  "cmd.open": "Paleta de comandos",
+  "cmd.placeholder": "Buscar medios o ejecutar una acción…",
+  "cmd.actions": "Acciones",
+  "cmd.downloadAll": "Descargar todos los archivos directos",
+  "cmd.copyAll": "Copiar todas las URL",
+  "cmd.openManager": "Abrir Media Manager",
+  "settings.openFull": "Abrir ajustes completos",
+  "settings.privacyNote": "Privacidad primero: los tokens se redactan, las observaciones de red nunca salen de tu dispositivo. El contenido DRM no se procesa."
 }

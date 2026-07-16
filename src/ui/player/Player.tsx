@@ -22,7 +22,7 @@ interface HlsLike {
   destroy: () => void;
 }
 
-export function Player() {
+export function Player({ mediaId }: { mediaId?: string } = {}) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const hlsRef = useRef<HlsLike | null>(null);
   const engineRef = useRef<{ destroy: () => void } | null>(null);
@@ -34,12 +34,14 @@ export function Player() {
   const [pip, setPip] = useState(false);
 
   useEffect(() => {
-    const id = new URLSearchParams(location.search).get('id') || '';
+    const id = mediaId || new URLSearchParams(location.search).get('id') || '';
+    if (!id) { setMedia(null); return; }
+    setError('');
     sendUi<MediaItem | undefined>({ type: 'GET_MEDIA', payload: { id } }).then((m) => {
       if (!m) setError('Media tidak ditemukan');
       else setMedia(m);
     });
-  }, []);
+  }, [mediaId]);
 
   useEffect(() => {
     if (!media || !videoRef.current) return;

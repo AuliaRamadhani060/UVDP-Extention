@@ -1,4 +1,5 @@
-.player { display: flex; flex-direction: column; height: 100vh; background: #000; color: var(--text); }
+html, body, #app { height: 100%; margin: 0; }
+.player { display: flex; flex-direction: column; height: 100%; min-height: 0; background: #000; color: var(--text); }
 .player__stage { flex: 1; display: grid; place-items: center; min-height: 0; background: #000; }
 .player__stage video { max-width: 100%; max-height: 100%; width: auto; height: 100%; }
 .player__bar {

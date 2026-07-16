@@ -66,5 +66,17 @@
   "ui.density": "الكثافة",
   "stat.media": "وسائط",
   "stat.streams": "بث",
-  "stat.favorites": "المفضلة"
+  "stat.favorites": "المفضلة",
+  "nav.library": "المكتبة",
+  "nav.player": "المشغل",
+  "nav.downloads": "التنزيلات",
+  "nav.settings": "الإعدادات",
+  "cmd.open": "لوحة الأوامر",
+  "cmd.placeholder": "ابحث في الوسائط أو نفّذ إجراءً…",
+  "cmd.actions": "إجراءات",
+  "cmd.downloadAll": "تنزيل كل الملفات المباشرة",
+  "cmd.copyAll": "نسخ كل الروابط",
+  "cmd.openManager": "فتح مدير الوسائط",
+  "settings.openFull": "فتح الإعدادات الكاملة",
+  "settings.privacyNote": "الخصوصية أولاً: يتم إخفاء الرموز، ولا تغادر ملاحظات الشبكة جهازك. لا تتم معالجة محتوى DRM."
 }

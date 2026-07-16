@@ -14,6 +14,7 @@ export type Accent = 'azure' | 'emerald' | 'magenta' | 'amber';
 export type Density = 'comfortable' | 'compact';
 export type FilterKind = 'all' | 'file' | 'hls' | 'dash' | 'mse' | 'fragmented' | 'favorites';
 export type SortKind = 'relevance' | 'recent' | 'quality';
+export type ManagerView = 'library' | 'player' | 'downloads' | 'settings';
 
 const UI_KEY = 'uvpd:ui';
 
@@ -24,6 +25,8 @@ interface UvpdState {
   activeTabId?: number;
   loading: boolean;
   // view-state
+  view: ManagerView;
+  selectedMediaId?: string;
   filter: FilterKind;
   query: string;
   sort: SortKind;
@@ -37,6 +40,8 @@ interface UvpdState {
   setLoading: (v: boolean) => void;
   setFavorites: (f: string[]) => void;
   // actions UI
+  setView: (v: ManagerView) => void;
+  setSelected: (id?: string) => void;
   setFilter: (f: FilterKind) => void;
   setQuery: (q: string) => void;
   setSort: (s: SortKind) => void;
@@ -61,6 +66,7 @@ export const useUvpd = create<UvpdState>((set, get) => ({
   downloads: {},
   favorites: [],
   loading: false,
+  view: 'library',
   filter: 'all',
   query: '',
   sort: 'relevance',
@@ -86,6 +92,8 @@ export const useUvpd = create<UvpdState>((set, get) => ({
   setLoading: (v) => set({ loading: v }),
   setFavorites: (f) => set({ favorites: f }),
 
+  setView: (view) => set({ view }),
+  setSelected: (selectedMediaId) => set({ selectedMediaId }),
   setFilter: (filter) => set({ filter }),
   setQuery: (query) => set({ query }),
   setSort: (sort) => set({ sort }),

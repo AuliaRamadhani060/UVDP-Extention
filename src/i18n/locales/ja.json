@@ -66,5 +66,17 @@
   "ui.density": "密度",
   "stat.media": "メディア",
   "stat.streams": "ストリーム",
-  "stat.favorites": "お気に入り"
+  "stat.favorites": "お気に入り",
+  "nav.library": "ライブラリ",
+  "nav.player": "プレーヤー",
+  "nav.downloads": "ダウンロード",
+  "nav.settings": "設定",
+  "cmd.open": "コマンドパレット",
+  "cmd.placeholder": "メディアを検索、またはアクションを実行…",
+  "cmd.actions": "アクション",
+  "cmd.downloadAll": "直接ファイルをすべてダウンロード",
+  "cmd.copyAll": "すべてのURLをコピー",
+  "cmd.openManager": "メディアマネージャーを開く",
+  "settings.openFull": "詳細設定を開く",
+  "settings.privacyNote": "プライバシー優先：トークンは秘匿され、ネットワーク観測は端末外に出ません。DRMコンテンツは処理しません。"
 }

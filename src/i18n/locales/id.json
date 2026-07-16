@@ -66,5 +66,17 @@
   "ui.density": "Kepadatan",
   "stat.media": "Media",
   "stat.streams": "Stream",
-  "stat.favorites": "Favorit"
+  "stat.favorites": "Favorit",
+  "nav.library": "Pustaka",
+  "nav.player": "Pemutar",
+  "nav.downloads": "Unduhan",
+  "nav.settings": "Pengaturan",
+  "cmd.open": "Command palette",
+  "cmd.placeholder": "Cari media atau jalankan aksi…",
+  "cmd.actions": "Aksi",
+  "cmd.downloadAll": "Unduh semua file langsung",
+  "cmd.copyAll": "Salin semua URL",
+  "cmd.openManager": "Buka Media Manager",
+  "settings.openFull": "Buka Pengaturan lengkap",
+  "settings.privacyNote": "Privasi diutamakan: token diredaksi, observasi jaringan tak pernah dikirim ke mana pun. Konten DRM tidak diproses."
 }

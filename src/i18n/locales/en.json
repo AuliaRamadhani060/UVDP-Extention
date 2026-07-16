@@ -66,5 +66,17 @@
   "ui.density": "Density",
   "stat.media": "Media",
   "stat.streams": "Streams",
-  "stat.favorites": "Favorites"
+  "stat.favorites": "Favorites",
+  "nav.library": "Library",
+  "nav.player": "Player",
+  "nav.downloads": "Downloads",
+  "nav.settings": "Settings",
+  "cmd.open": "Command palette",
+  "cmd.placeholder": "Search media or run an action…",
+  "cmd.actions": "Actions",
+  "cmd.downloadAll": "Download all direct files",
+  "cmd.copyAll": "Copy all URLs",
+  "cmd.openManager": "Open Media Manager",
+  "settings.openFull": "Open full Settings",
+  "settings.privacyNote": "Privacy-first: tokens are redacted, network observations never leave your device. DRM content is not processed."
 }

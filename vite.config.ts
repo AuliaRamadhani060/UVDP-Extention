@@ -37,6 +37,7 @@ export default defineConfig({
         // @crxjs sebagai entry → daftarkan manual agar .tsx-nya diproses.
         player: resolve(__dirname, 'src/ui/player/player.html'),
         offscreen: resolve(__dirname, 'src/offscreen/offscreen.html'),
+        manager: resolve(__dirname, 'src/ui/manager/manager.html'),
       },
     },
     target: 'es2022',

@@ -144,3 +144,9 @@
   .rs-eq i { animation: none; transform: scaleY(.7); }
   .rs-root *, .rs-root *::before, .rs-root *::after { animation-duration: .001ms !important; transition-duration: .001ms !important; }
 }
+
+/* cmdk (command palette) */
+[cmdk-item] { border-radius: 8px; }
+[cmdk-item][data-selected="true"] { background: var(--rs-card-hi); }
+[cmdk-item][data-disabled="true"] { opacity: .4; }
+[cmdk-group-heading] { padding: 8px 10px 3px; color: var(--rs-tx-3); font-family: var(--font-mono); font-size: 10px; letter-spacing: .04em; text-transform: uppercase; }
