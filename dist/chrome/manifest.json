@@ -44,7 +44,7 @@
   "content_scripts": [
     {
       "js": [
-        "assets/index.ts-loader-Bx0Cb9h9.js"
+        "assets/index.ts-loader-CY8nJkyv.js"
       ],
       "matches": [
         "<all_urls>"
@@ -77,10 +77,10 @@
         "assets/messaging-C46JWWw6.js.map",
         "assets/url-utils-CWjXbvFi.js",
         "assets/url-utils-CWjXbvFi.js.map",
-        "assets/store-DYIi0R97.js",
-        "assets/store-DYIi0R97.js.map",
-        "assets/index.ts-tiIjBHNp.js",
-        "assets/index.ts-tiIjBHNp.js.map",
+        "assets/store-B3RAS7mn.js",
+        "assets/store-B3RAS7mn.js.map",
+        "assets/index.ts-LlAYPlzK.js",
+        "assets/index.ts-LlAYPlzK.js.map",
         "assets/hooks.ts-BZqKPkzn.js",
         "assets/hooks.ts-BZqKPkzn.js.map"
       ],
