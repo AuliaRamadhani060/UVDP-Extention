@@ -2,7 +2,7 @@
 import { sizeHuman } from '@/core/url-utils';
 import { mediaKind, mediaDisplayName, mediaOrigin, mediaQualityLabel, formatDuration, mediaRelevanceScore } from '@/core/media-utils';
 import type { MediaItem } from '@/shared/types';
-import type { FilterKind, SortKind } from '@/ui/store/uvpd';
+import type { FilterKind, SortKind, ProvenanceFilter } from '@/ui/store/uvpd';
 
 export type ViewKind = 'direct' | 'hls' | 'dash' | 'mse' | 'fragmented';
 
@@ -50,13 +50,25 @@ export function metaTokens(m: MediaItem): string[] {
 
 export { mediaOrigin };
 
+/** Apakah media cocok dengan filter provenance (U5). */
+export function matchesProvenance(m: MediaItem, p: ProvenanceFilter): boolean {
+  switch (p) {
+    case 'iframe': return (m.frameId ?? 0) > 0; // frameId 0 = frame utama
+    case 'reassembled': return m.kind === 'fragmented';
+    case 'spa': return m.spaNav === true;
+    default: return true;
+  }
+}
+
 /** Filter + cari + sort → daftar tampil. */
 export function computeVisible(
   media: Record<string, MediaItem>,
-  opts: { filter: FilterKind; query: string; sort: SortKind; favorites: string[] },
+  opts: { filter: FilterKind; query: string; sort: SortKind; favorites: string[]; provenance?: ProvenanceFilter },
 ): MediaItem[] {
   let list = Object.values(media);
   const { filter, query, sort, favorites } = opts;
+
+  if (opts.provenance && opts.provenance !== 'any') list = list.filter((m) => matchesProvenance(m, opts.provenance!));
 
   if (filter === 'favorites') list = list.filter((m) => favorites.includes(m.url));
   else if (filter !== 'all') list = list.filter((m) => (filter === 'file' ? viewKind(m) === 'direct' || viewKind(m) === 'mse' : viewKind(m) === filter));

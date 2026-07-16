@@ -7,6 +7,7 @@ import { useUvpd } from '@/ui/store/uvpd';
 import { computeVisible, primaryId } from '@/ui/lib/media-view';
 import { MediaCard } from './MediaCard';
 import { FilterChips } from './FilterChips';
+import { ProvenanceChips } from './ProvenanceChips';
 import { SearchBar } from './SearchBar';
 import { t } from '@/i18n';
 import type { SortKind } from '@/ui/store/uvpd';
@@ -47,12 +48,13 @@ function SkeletonCard() {
 export function LibraryView({ layout = 'list', minCol = 280 }: { layout?: 'list' | 'grid'; minCol?: number }) {
   const media = useUvpd((s) => s.media);
   const filter = useUvpd((s) => s.filter);
+  const provenance = useUvpd((s) => s.provenance);
   const query = useUvpd((s) => s.query);
   const sort = useUvpd((s) => s.sort);
   const favorites = useUvpd((s) => s.favorites);
   const loading = useUvpd((s) => s.loading);
 
-  const visible = useMemo(() => computeVisible(media, { filter, query, sort, favorites }), [media, filter, query, sort, favorites]);
+  const visible = useMemo(() => computeVisible(media, { filter, query, sort, favorites, provenance }), [media, filter, query, sort, favorites, provenance]);
   const mainId = useMemo(() => primaryId(media), [media]);
   const total = Object.keys(media).length;
 
@@ -80,6 +82,7 @@ export function LibraryView({ layout = 'list', minCol = 280 }: { layout?: 'list'
     <div className="flex min-h-0 flex-1 flex-col">
       <div className="flex flex-col gap-2 px-4 py-3">
         <FilterChips />
+        <ProvenanceChips />
         <div className="flex items-center gap-2"><SearchBar /><SortSelect /></div>
       </div>
 

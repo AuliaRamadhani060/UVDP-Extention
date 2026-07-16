@@ -1,8 +1,10 @@
 // Media Manager (§2) — wujud tab penuh. RailNav + 4 view + ⌘K + transisi.
 import { useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
+import { ClipboardPaste } from 'lucide-react';
 import { useUvpd, useUvpdBridge, useApplyTheme, type ManagerView } from '@/ui/store/uvpd';
 import { useQueueBridge } from '@/ui/store/downloads';
+import { useUrlIntake } from '@/ui/hooks/useUrlIntake';
 import { RailNav } from './RailNav';
 import { HeaderControls } from '@/ui/sidepanel/SidePanel';
 import { LibraryView } from '@/ui/components/library/LibraryView';
@@ -22,6 +24,7 @@ export function Manager() {
   useUvpdBridge();
   useQueueBridge();
   useApplyTheme();
+  const dragging = useUrlIntake();
   const [cmdOpen, setCmdOpen] = useState(false);
   const view = useUvpd((s) => s.view);
 
@@ -51,6 +54,12 @@ export function Manager() {
           </AnimatePresence>
         </div>
       </div>
+      {dragging && (
+        <div className="pointer-events-none absolute inset-3 z-40 flex flex-col items-center justify-center gap-2 rounded-xl" style={{ border: '2px dashed var(--rs-accent)', background: 'color-mix(in oklab, var(--rs-accent) 10%, transparent)' }}>
+          <ClipboardPaste size={26} style={{ color: 'var(--rs-accent)' }} />
+          <div className="text-[13px]" style={{ color: 'var(--rs-tx)' }}>{t('intake.drop')}</div>
+        </div>
+      )}
       <CommandPalette open={cmdOpen} setOpen={setCmdOpen} />
       <DownloadDock />
       <Toaster />

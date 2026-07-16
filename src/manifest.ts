@@ -48,6 +48,12 @@ export function buildManifest(target: Target): ManifestV3Export {
       ...(target === 'chrome' ? ['offscreen', 'sidePanel'] : []),
     ],
     host_permissions: ['<all_urls>'],
+    // ffmpeg.wasm (U5) mengkompilasi WebAssembly di offscreen/background →
+    // MV3 mewajibkan 'wasm-unsafe-eval'. Skrip tetap hanya dari 'self'
+    // (core WASM dibundel lokal, tidak pernah dari CDN).
+    content_security_policy: {
+      extension_pages: "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'",
+    },
     background:
       target === 'firefox'
         ? // Firefox MV3 lebih andal dengan background scripts non-persisten.

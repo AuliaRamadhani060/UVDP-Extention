@@ -50,6 +50,10 @@ function register(cap: Capture): void {
     fragmentType: cap.type,
     segmentCount: cap.chunks.length,
     sizeBytes: cap.bytes,
+    // UX jujur (U5): capture bersifat REAL-TIME — hanya berisi yang sudah diputar.
+    // captureTracks ≥ 2 → audio & video ditangkap terpisah → butuh remux.
+    captureBytes: cap.bytes,
+    captureTracks: captures.size,
   };
   sendBridge({ type: 'MEDIA_CANDIDATE', payload: item });
 }

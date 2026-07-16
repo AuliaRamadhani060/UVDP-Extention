@@ -16,7 +16,7 @@ import { isOffscreenAvailable, ensureOffscreen } from './offscreen-manager';
 import { getGroupSegments, getSiblingAudioId } from './fragment-grouper';
 import { ensureRefererRule } from './referer-spoof';
 import type { MediaItem, MediaKind, DownloadProgress } from '@/shared/types';
-import type { DownloadStrategy, QueueJobView, QueueSnapshot, SegmentedResult, ResumableState } from '@/shared/contract';
+import type { DownloadStrategy, QueueJobView, QueueSnapshot, SegmentedResult, ResumableState, MuxState, MuxFile } from '@/shared/contract';
 
 interface Job {
   id: string;
@@ -42,6 +42,9 @@ interface Job {
   speed: number;
   lastBytes: number;
   lastTime: number;
+  /** Berkas A/V terpisah menunggu digabung (blob URL hidup di offscreen/bg). */
+  muxFiles?: MuxFile[];
+  muxProgress?: number;
 }
 
 type Port = { name: string; postMessage: (m: unknown) => void; onDisconnect: { addListener: (cb: () => void) => void } };
@@ -73,6 +76,7 @@ function toView(j: Job): QueueJobView {
     strategy: j.strategy, status: j.status, loaded: j.loaded, total: j.total,
     speed: j.speed, etaSec: etaOf(j), order: j.order, createdAt: j.createdAt,
     resumable: j.resumable, quality: j.quality, error: j.error,
+    canMerge: (j.muxFiles?.length || 0) >= 2, muxProgress: j.muxProgress,
   };
 }
 function snapshot(): QueueSnapshot {
@@ -329,27 +333,46 @@ async function runFragmented(job: Job): Promise<void> {
   if (audioSegs.length) partsJobs.push({ segments: audioSegs, filename: `${base}.audio.m4a`, mime: 'audio/mp4' });
 
   try {
+    const produced: MuxFile[] = [];
     for (const part of partsJobs) {
       if (isOffscreenAvailable()) {
         await ensureOffscreen();
         const res = (await browser.runtime.sendMessage({ type: 'RUN_FRAGMENTS', payload: { id: job.id, segments: part.segments, filename: part.filename, mime: part.mime } })) as { payload: SegmentedResult } | undefined;
-        if (res?.payload?.files?.[0]) await saveToDisk(job, res.payload.files[0].blobUrl, res.payload.files[0].filename, res.payload.files[0].blobUrl);
+        if (res?.payload?.files?.[0]) produced.push({ blobUrl: res.payload.files[0].blobUrl, filename: res.payload.files[0].filename });
         else throw new Error(res?.payload?.error || 'Perakitan fragmen gagal');
       } else {
         const blob = await downloadSegments(part.segments, null, { fetchBuffer: (u, range) => { const h: Record<string, string> = {}; if (range) h.Range = 'bytes=' + range; return fetch(u, { credentials: 'include', headers: h }).then((r) => { if (!r.ok && r.status !== 206) throw new Error('HTTP ' + r.status); return r.arrayBuffer(); }); }, mimeType: part.mime, onProgress: (p) => setProgress(job, p.completed, p.total) });
-        const blobUrl = URL.createObjectURL(blob);
-        await saveToDisk(job, blobUrl, part.filename, blobUrl);
+        produced.push({ blobUrl: URL.createObjectURL(blob), filename: part.filename });
       }
     }
-    if (audioSegs.length) notify('Audio & video fragmen diunduh terpisah. Gabungkan dengan ffmpeg.');
+    // U5: video+audio fragmen terpisah → tawarkan gabung (ffmpeg.wasm).
+    if (produced.length >= 2) {
+      job.muxFiles = produced;
+      setStatus(job, 'awaiting_mux');
+      notify('Video & audio fragmen terpisah — pilih "Gabungkan" di antrean.');
+      pump();
+      return;
+    }
+    for (const f of produced) await saveToDisk(job, f.blobUrl, f.filename, f.blobUrl);
   } catch (e) { reportStreamError(job, String((e as Error)?.message || e)); pump(); }
 }
 
 function handleStreamResult(job: Job, result: SegmentedResult): void {
   if (result.error) { reportStreamError(job, result.error); pump(); return; }
+
+  // U5: audio & video terpisah → JANGAN langsung simpan. Tahan blob-nya dan
+  // tawarkan "Gabungkan" (ffmpeg.wasm) atau "Simpan terpisah".
+  if (result.muxHint && result.files.length >= 2) {
+    job.muxFiles = result.files.map((f) => ({ blobUrl: f.blobUrl, filename: f.filename }));
+    for (const d of result.directDownloads) saveToDisk(job, d.url, d.filename);
+    setStatus(job, 'awaiting_mux');
+    notify('Audio & video terunduh terpisah — pilih "Gabungkan" di antrean untuk menyatukannya.');
+    pump();
+    return;
+  }
+
   for (const f of result.files) saveToDisk(job, f.blobUrl, f.filename, f.blobUrl);
   for (const d of result.directDownloads) saveToDisk(job, d.url, d.filename);
-  if (result.muxHint) notify('Audio & video diunduh terpisah. Gabungkan dengan ffmpeg (tombol "Salin ffmpeg").');
 }
 function reportStreamError(job: Job, message: string): void {
   if (/^PROTECTED:/.test(message) || /protect|drm/i.test(message)) { setStatus(job, 'error', 'Terproteksi/DRM'); notify('Media terproteksi/DRM — tidak diproses.'); }
@@ -408,6 +431,62 @@ export function setConcurrency(n: number): void {
   push(); pump();
 }
 
+// ---------- Mux audio+video (ffmpeg.wasm, U5) ----------
+function isAudioName(n: string): boolean { return /\.(m4a|aac|mp3|opus|ogg|audio\.\w+)$/i.test(n) || /\.audio\./i.test(n); }
+
+/** Gabungkan A/V terpisah jadi satu berkas. WASM baru dimuat di titik ini. */
+export async function mergeJob(id: string): Promise<void> {
+  const j = jobs.get(id);
+  if (!j || !j.muxFiles || j.muxFiles.length < 2) return;
+  const audio = j.muxFiles.find((f) => isAudioName(f.filename)) || j.muxFiles[1];
+  const video = j.muxFiles.find((f) => f !== audio) || j.muxFiles[0];
+  const outName = (j.filename.replace(/\.[^./\\]+$/, '').replace(/\.(video|audio)$/i, '') || 'video') + '.mp4';
+
+  j.muxProgress = 0;
+  setStatus(j, 'muxing');
+
+  if (isOffscreenAvailable()) {
+    await ensureOffscreen();
+    // Hasil datang lewat MUX_STATE (lihat handleRuntime).
+    browser.runtime.sendMessage({ type: 'MUX_AV', payload: { id, video, audio, outName } }).catch(() => {});
+    return;
+  }
+  // Firefox: jalankan ffmpeg.wasm di background page (import dinamis → lazy).
+  try {
+    const { muxAudioVideo } = await import('@/core/ffmpeg-mux');
+    const grab = async (f: MuxFile) => ({ data: new Uint8Array(await (await fetch(f.blobUrl)).arrayBuffer()), filename: f.filename });
+    const [v, a] = await Promise.all([grab(video), grab(audio)]);
+    const blob = await muxAudioVideo(v, a, outName, (r) => { j.muxProgress = r; push(); });
+    onMuxResult(j, 'complete', URL.createObjectURL(blob), outName);
+  } catch (e) {
+    onMuxResult(j, 'error', undefined, outName, String((e as Error)?.message || e));
+  }
+}
+
+function onMuxResult(j: Job, status: 'complete' | 'error', blobUrl?: string, outName?: string, error?: string): void {
+  if (status === 'error') {
+    j.muxProgress = undefined;
+    setStatus(j, 'awaiting_mux', error); // tetap bisa disimpan terpisah / dicoba lagi
+    notify('Gabung gagal: ' + (error || '') + ' — Anda masih bisa menyimpan terpisah.');
+    return;
+  }
+  // Sukses: buang blob sumber, simpan hasil gabungan.
+  for (const f of j.muxFiles || []) revokeBlob(f.blobUrl);
+  j.muxFiles = undefined;
+  j.muxProgress = undefined;
+  if (blobUrl) saveToDisk(j, blobUrl, outName || j.filename, blobUrl);
+}
+
+/** Fallback: simpan A/V apa adanya (tanpa mux) + tetap ada ekspor perintah ffmpeg. */
+export function saveSeparate(id: string): void {
+  const j = jobs.get(id);
+  if (!j || !j.muxFiles) return;
+  const files = j.muxFiles;
+  j.muxFiles = undefined;
+  setStatus(j, 'downloading');
+  for (const f of files) saveToDisk(j, f.blobUrl, f.filename, f.blobUrl);
+}
+
 // Unduh-ulang dari riwayat: bangun job dari entri riwayat tersimpan.
 export function redownload(id: string): void {
   const h = history.find((x) => x.id === id) || (jobs.get(id) ? toView(jobs.get(id)!) : undefined);
@@ -451,6 +530,13 @@ function handleRuntime(raw: unknown): void {
     const p = (msg as ResumableState).payload;
     const j = jobs.get(p.id);
     if (j) onResumableResult(j, p.status, p.blobUrl, { rangeUnsupported: p.rangeUnsupported, error: p.error, totalBytes: p.totalBytes, etag: p.etag, lastModified: p.lastModified });
+  } else if (msg?.type === 'MUX_STATE') {
+    const p = (msg as MuxState).payload;
+    const j = jobs.get(p.id);
+    if (!j) return;
+    if (p.status === 'muxing') { j.muxProgress = p.progress ?? 0; push(); return; }
+    const outName = (j.filename.replace(/\.[^./\\]+$/, '').replace(/\.(video|audio)$/i, '') || 'video') + '.mp4';
+    onMuxResult(j, p.status === 'complete' ? 'complete' : 'error', p.blobUrl, outName, p.error);
   }
 }
 browser.runtime.onMessage.addListener((raw: unknown) => { handleRuntime(raw); return false; });

@@ -6,13 +6,21 @@ import { parseDash } from '@/core/dash-parser';
 import { runSegmentedDownload } from '@/core/segmented-runner';
 import { downloadSegments } from '@/core/segment-downloader';
 import { runResumableDownload, isRangeUnsupported } from '@/core/resumable-download';
-import type { OffscreenRequest, OffscreenResponse, ResumableState } from '@/shared/contract';
+import type { OffscreenRequest, OffscreenResponse, ResumableState, MuxState } from '@/shared/contract';
 
 // Kontrol jalannya unduhan resumable (pause/cancel) per-id.
 const resumableControl = new Map<string, { paused: boolean; canceled: boolean }>();
 
 function emitResumable(payload: ResumableState['payload']): void {
   browser.runtime.sendMessage({ type: 'RESUMABLE_STATE', payload }).catch(() => {});
+}
+function emitMux(payload: MuxState['payload']): void {
+  browser.runtime.sendMessage({ type: 'MUX_STATE', payload }).catch(() => {});
+}
+
+async function blobUrlToInput(url: string, filename: string): Promise<{ data: Uint8Array; filename: string }> {
+  const res = await fetch(url);
+  return { data: new Uint8Array(await res.arrayBuffer()), filename };
 }
 
 async function fetchText(url: string): Promise<string> {
@@ -51,6 +59,22 @@ browser.runtime.onMessage.addListener((
 
   if (msg?.type === 'REVOKE_BLOBS') {
     msg.payload.urls.forEach((u) => { try { URL.revokeObjectURL(u); } catch { /* noop */ } });
+    return false;
+  }
+
+  if (msg?.type === 'MUX_AV') {
+    const { id, video, audio, outName } = msg.payload;
+    (async () => {
+      // Import DINAMIS: core ffmpeg.wasm (±32MB) hanya diunduh/dikompilasi di sini,
+      // saat user benar-benar menekan "Gabungkan" — bukan saat startup.
+      const { muxAudioVideo } = await import('@/core/ffmpeg-mux');
+      const [v, a] = await Promise.all([
+        blobUrlToInput(video.blobUrl, video.filename),
+        blobUrlToInput(audio.blobUrl, audio.filename),
+      ]);
+      const blob = await muxAudioVideo(v, a, outName, (ratio) => emitMux({ id, status: 'muxing', progress: ratio }));
+      emitMux({ id, status: 'complete', blobUrl: URL.createObjectURL(blob), size: blob.size });
+    })().catch((e) => emitMux({ id, status: 'error', error: String((e as Error)?.message || e) }));
     return false;
   }
 

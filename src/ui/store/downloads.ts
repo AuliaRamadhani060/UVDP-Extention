@@ -27,6 +27,8 @@ interface QueueState {
   reorder: (ids: string[]) => void;
   setConcurrency: (n: number) => void;
   subtitle: (id: string, track: number) => void;
+  merge: (id: string) => void;
+  saveSeparate: (id: string) => void;
 }
 
 export const useQueue = create<QueueState>((set, get) => ({
@@ -56,6 +58,8 @@ export const useQueue = create<QueueState>((set, get) => ({
   reorder: (ids) => { sendUi({ type: 'DOWNLOAD_REORDER', payload: { ids } }); },
   setConcurrency: (n) => { set({ concurrency: n }); sendUi({ type: 'SET_CONCURRENCY', payload: { n } }); },
   subtitle: (id, track) => { sendUi({ type: 'DOWNLOAD_SUBTITLE', payload: { id, track } }); },
+  merge: (id) => { sendUi({ type: 'DOWNLOAD_MERGE', payload: { id } }); },
+  saveSeparate: (id) => { sendUi({ type: 'DOWNLOAD_SAVE_SEPARATE', payload: { id } }); },
 }));
 
 interface PortLike { onMessage: { addListener: (cb: (m: unknown) => void) => void }; onDisconnect: { addListener: (cb: () => void) => void }; disconnect: () => void }

@@ -13,6 +13,9 @@ import type { MediaItem, MediaKind } from '@/shared/types';
 
 const seen = new Set<string>();
 let enabled = true;
+// True setelah halaman melakukan navigasi SPA (pushState/replaceState/popstate).
+// Media yang ditemukan sesudahnya ditandai `spaNav` (filter provenance U5).
+let spaNavigated = false;
 
 function report(url: string, source: MediaItem['source'], extra: Partial<MediaItem> = {}): void {
   if (!enabled || seen.has(url)) return;
@@ -23,7 +26,7 @@ function report(url: string, source: MediaItem['source'], extra: Partial<MediaIt
   if (!extra.protected && !explicitStream && !isListableMediaUrl(url)) return;
   seen.add(url);
   const kind = (extra.kind as MediaKind) || classifyFromUrl(url);
-  const item = toMediaItem(url, kind, source, { pageTitle: smartTitle(), ...extra });
+  const item = toMediaItem(url, kind, source, { pageTitle: smartTitle(), spaNav: spaNavigated || undefined, ...extra });
   sendBridge({ type: 'MEDIA_CANDIDATE', payload: item });
   pushHistory({ url, time: Date.now(), type: source });
 }
@@ -59,6 +62,10 @@ window.addEventListener('message', (e) => {
   const p = data.payload || {};
   if (p.kind === 'hello') {
     sendBridge({ type: 'PING_CHAIN', payload: { reached: ['main', 'bridge'] } });
+  } else if (p.kind === 'spa-nav') {
+    // Navigasi SPA: dokumen tak dimuat ulang → tandai media berikutnya + pindai lagi.
+    spaNavigated = true;
+    setTimeout(scan, 400);
   } else if (p.kind === 'eme') {
     report(location.href, 'page-hook', { protected: true, title: `DRM: ${p.keySystem}`, kind: 'unknown' });
   } else if (p.kind === 'manifest' && p.url) {

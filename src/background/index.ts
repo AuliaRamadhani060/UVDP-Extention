@@ -24,6 +24,7 @@ registerRouter({
   registry,
   registerCandidate: (entry, tabId) => registerAndEnrich(entry, tabId),
   openPlayer,
+  analyzeUrl,
 });
 
 // Port streaming antrean unduhan (UI ⇄ background).
@@ -46,6 +47,10 @@ installNetSniffer(
 
 // Registry hidup lintas tidur-SW & navigasi.
 registry.ready.catch(() => {});
+// Badge selalu cerminkan tab yang sedang aktif (mis. setelah SW bangun kembali).
+browser.tabs.onActivated.addListener((info: { tabId: number }) => {
+  registry.ready.then(() => updateBadge(info.tabId)).catch(() => {});
+});
 browser.tabs.onUpdated.addListener((tabId: number, changeInfo: { status?: string; url?: string }) => {
   // Reload/navigasi dokumen nyata → bersihkan media tab (SPA soft-nav tidak memicu ini).
   if (changeInfo.status === 'loading' && changeInfo.url) {
@@ -93,6 +98,17 @@ function registerAndEnrich(partial: Partial<MediaItem> & { url: string }, tabId?
     });
   }
   return item;
+}
+
+/**
+ * Analisis cepat URL yang di-paste/drop user (U5). Deteksi jenis dari URL lalu
+ * daftarkan sebagai kandidat → enrichment/ukuran mengalir seperti media biasa.
+ */
+function analyzeUrl(rawUrl: string, tabId?: number): void {
+  const url = rawUrl.trim();
+  if (!/^https?:\/\//i.test(url)) return;
+  const kind: MediaItem['kind'] = /\.m3u8(\?|$)/i.test(url) ? 'hls' : /\.mpd(\?|$)/i.test(url) ? 'dash' : 'file';
+  registerAndEnrich({ url, kind, source: 'text-scan', pageUrl: url, protected: false }, tabId);
 }
 
 function openPlayer(id: string): void {

@@ -17,6 +17,25 @@ function report(payload: Record<string, unknown>): void {
 let emeDetected = false;
 let mseCounter = 0;
 
+// --- Navigasi SPA (U5) ---
+// history.pushState/replaceState/popstate tidak memuat ulang dokumen, jadi media
+// yang muncul SETELAHNYA berasal dari "halaman" lain secara logis. Tandai agar
+// Library bisa memfilter provenance "setelah navigasi SPA".
+function hookSpaNav(): void {
+  const fire = () => report({ kind: 'spa-nav', url: location.href });
+  for (const m of ['pushState', 'replaceState'] as const) {
+    const orig = history[m];
+    if (typeof orig !== 'function') continue;
+    history[m] = function (this: History, ...args: unknown[]) {
+      const r = (orig as (...a: unknown[]) => unknown).apply(this, args);
+      try { fire(); } catch { /* noop */ }
+      return r;
+    } as History[typeof m];
+  }
+  window.addEventListener('popstate', fire);
+}
+hookSpaNav();
+
 function toArrayBufferCopy(chunk: unknown): ArrayBuffer | null {
   try {
     if (chunk instanceof ArrayBuffer) return chunk.slice(0);

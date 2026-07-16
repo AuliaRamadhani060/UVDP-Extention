@@ -14,6 +14,8 @@ export type Accent = 'azure' | 'emerald' | 'magenta' | 'amber';
 export type Density = 'comfortable' | 'compact';
 export type FilterKind = 'all' | 'file' | 'hls' | 'dash' | 'mse' | 'fragmented' | 'favorites';
 export type SortKind = 'relevance' | 'recent' | 'quality';
+/** Filter provenance (U5): dari mana/bagaimana media tertangkap. */
+export type ProvenanceFilter = 'any' | 'iframe' | 'reassembled' | 'spa';
 export type ManagerView = 'library' | 'player' | 'downloads' | 'settings';
 
 const UI_KEY = 'uvpd:ui';
@@ -28,6 +30,7 @@ interface UvpdState {
   view: ManagerView;
   selectedMediaId?: string;
   filter: FilterKind;
+  provenance: ProvenanceFilter;
   query: string;
   sort: SortKind;
   theme: Theme;
@@ -43,6 +46,7 @@ interface UvpdState {
   setView: (v: ManagerView) => void;
   setSelected: (id?: string) => void;
   setFilter: (f: FilterKind) => void;
+  setProvenance: (p: ProvenanceFilter) => void;
   setQuery: (q: string) => void;
   setSort: (s: SortKind) => void;
   setTheme: (t: Theme) => void;
@@ -55,6 +59,8 @@ interface UvpdState {
   retry: (id: string) => void;
   copyFfmpeg: (id: string) => Promise<void>;
   rescan: () => Promise<void>;
+  /** Analisis cepat URL yang di-paste/drop (U5). Dilekatkan ke tab aktif agar tampil di Library. */
+  analyzeUrl: (url: string) => void;
 }
 
 function persistUi(s: Pick<UvpdState, 'theme' | 'accent' | 'density'>): void {
@@ -68,6 +74,7 @@ export const useUvpd = create<UvpdState>((set, get) => ({
   loading: false,
   view: 'library',
   filter: 'all',
+  provenance: 'any',
   query: '',
   sort: 'relevance',
   theme: 'system',
@@ -95,6 +102,7 @@ export const useUvpd = create<UvpdState>((set, get) => ({
   setView: (view) => set({ view }),
   setSelected: (selectedMediaId) => set({ selectedMediaId }),
   setFilter: (filter) => set({ filter }),
+  setProvenance: (provenance) => set({ provenance }),
   setQuery: (query) => set({ query }),
   setSort: (sort) => set({ sort }),
   setTheme: (theme) => { set({ theme }); persistUi({ ...get(), theme }); },
@@ -112,6 +120,9 @@ export const useUvpd = create<UvpdState>((set, get) => ({
     await navigator.clipboard.writeText(buildFfmpegCommand(m.url));
     sendUi({ type: 'NOTIFY', payload: { title: 'UVPD', message: 'ffmpeg → clipboard' } });
   },
+  // tabId WAJIB diisi: registry.list() menyaring ketat per-tab, dan halaman
+  // ekstensi tak punya sender.tab → tanpa ini media takkan muncul di Library.
+  analyzeUrl: (url) => { sendUi({ type: 'ANALYZE_URL', payload: { url, tabId: get().activeTabId } }); },
   rescan: async () => {
     set({ loading: true });
     const res = await sendUi<{ entries: MediaItem[] }>({ type: 'GET_MEDIA_LIST', payload: { tabId: get().activeTabId } });

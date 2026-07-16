@@ -9,6 +9,7 @@ import { buildFfmpegCommand } from '@/core/media-utils';
 import {
   enqueue, cancelJob, pauseJob, resumeJob, removeJob, retryJob, reorder,
   setConcurrency, downloadSubtitle, getSnapshot, listDownloadsCompat,
+  mergeJob, saveSeparate,
 } from './download-queue';
 
 const DIAG_KEY = 'uvpd:diag';
@@ -18,6 +19,8 @@ export interface RouterDeps {
   registry: MediaRegistry;
   registerCandidate: (entry: Partial<MediaItem> & { url: string }, tabId?: number) => void;
   openPlayer: (id: string) => void;
+  /** Analisis cepat URL yang di-paste/drop user (U5). */
+  analyzeUrl: (url: string, tabId?: number) => void;
 }
 
 // --- Diagnostik (Fase 0) di storage.session → tahan SW tidur (§9) ---
@@ -116,6 +119,18 @@ export function registerRouter(deps: RouterDeps): void {
       }
       case 'SET_CONCURRENCY': {
         setConcurrency(msg.payload.n);
+        return false;
+      }
+      case 'DOWNLOAD_MERGE': {
+        mergeJob(msg.payload.id);
+        return false;
+      }
+      case 'DOWNLOAD_SAVE_SEPARATE': {
+        saveSeparate(msg.payload.id);
+        return false;
+      }
+      case 'ANALYZE_URL': {
+        deps.analyzeUrl(msg.payload.url, msg.payload.tabId ?? sender.tab?.id);
         return false;
       }
       case 'DOWNLOAD_SUBTITLE': {

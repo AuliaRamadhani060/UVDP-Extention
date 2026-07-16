@@ -46,6 +46,9 @@ export interface MediaItem {
   poster?: string; // thumbnail dataURL dari frame <video> (bila bisa ditangkap)
   segmentCount?: number; // untuk stream terkelompok dari fragmen (kind 'fragmented')
   fragmentType?: 'video' | 'audio' | 'unknown';
+  spaNav?: boolean; // ditemukan SETELAH navigasi SPA (pushState/popstate) — filter provenance
+  captureBytes?: number; // byte tertangkap sejauh ini (capture MSE real-time)
+  captureTracks?: number; // jumlah SourceBuffer (2 = audio+video terpisah → butuh remux)
 
   // Deteksi DRM/enkripsi
   protected: boolean;
@@ -71,7 +74,9 @@ export interface DownloadProgress {
   filename: string;
   loaded: number;
   total: number;
-  status: 'queued' | 'downloading' | 'paused' | 'complete' | 'error' | 'canceled';
+  // 'awaiting_mux' = audio & video terunduh terpisah, menunggu keputusan user
+  // (gabungkan via ffmpeg.wasm atau simpan terpisah). 'muxing' = sedang digabung.
+  status: 'queued' | 'downloading' | 'paused' | 'complete' | 'error' | 'canceled' | 'awaiting_mux' | 'muxing';
   error?: string;
   resumable?: boolean;
 }

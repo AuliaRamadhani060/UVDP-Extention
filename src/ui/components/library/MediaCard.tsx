@@ -8,6 +8,7 @@ import { ProvenanceStrip } from './ProvenanceStrip';
 import { QualityLadder } from './QualityLadder';
 import { viewKind, kindColorVar, kindLabel, smartName, metaTokens, mediaOrigin } from '@/ui/lib/media-view';
 import { formatDuration } from '@/core/media-utils';
+import { sizeHuman } from '@/core/url-utils';
 import { t } from '@/i18n';
 import type { MediaItem } from '@/shared/types';
 
@@ -49,6 +50,10 @@ export function MediaCard({ media, isMain }: { media: MediaItem; isMain?: boolea
   const isStream = k === 'hls' || k === 'dash';
   const canPlay = !media.protected && k !== 'fragmented' && !(k === 'mse' && /^blob:/i.test(media.url));
   const canDownload = !media.protected && !(k === 'mse' && !/^mse:\/\//.test(media.url));
+  // Capture MSE (§8.2): real-time — hanya berisi bagian yang SUDAH diputar.
+  const isCapture = k === 'mse' && /^mse:\/\//i.test(media.url) && !media.protected;
+  const capturedBytes = media.captureBytes ?? media.sizeBytes ?? 0;
+  const needsRemux = (media.captureTracks ?? 0) >= 2;
   const dur = formatDuration(media.duration);
   const pct = dl && dl.total > 0 ? Math.round((dl.loaded / dl.total) * 100) : 0;
 
@@ -106,9 +111,26 @@ export function MediaCard({ media, isMain }: { media: MediaItem; isMain?: boolea
           </div>
         )}
 
+        {/* Capture MSE: jelaskan apa adanya — bukan "unduh instan" (U5) */}
+        {isCapture && (
+          <div className="flex flex-col gap-1 rounded-md p-2 text-[11px]" style={{ background: 'color-mix(in oklab, var(--mse) 12%, transparent)', border: '1px solid color-mix(in oklab, var(--mse) 40%, transparent)' }}>
+            <div className="flex items-center gap-1.5 font-semibold" style={{ color: 'var(--mse)' }}>
+              <span className="rs-eq" aria-hidden="true"><i /><i /><i /><i /></span>
+              {t('mse.realtime')}
+            </div>
+            <div style={{ color: 'var(--rs-tx-2)' }}>{t('mse.explain')}</div>
+            <div className="rs-mono" style={{ color: 'var(--rs-tx-3)' }}>{t('mse.captured', { size: sizeHuman(capturedBytes) })}</div>
+            {needsRemux && <div style={{ color: 'var(--rs-tx-3)' }}>{t('mse.remux')}</div>}
+          </div>
+        )}
+
         {/* Aksi */}
         <div className="mt-1 flex flex-wrap items-center gap-1.5">
-          {canDownload && <IconBtn label={t('media.download')} onClick={() => qDownload(media.id, { quality })} primary><Download size={13} /> {t('media.download')}</IconBtn>}
+          {canDownload && (
+            <IconBtn label={isCapture ? t('mse.save') : t('media.download')} onClick={() => qDownload(media.id, { quality })} primary>
+              <Download size={13} /> {isCapture ? t('mse.save') : t('media.download')}
+            </IconBtn>
+          )}
           {canDownload && variants.length > 1 && (
             <select
               aria-label={t('sort.quality')}

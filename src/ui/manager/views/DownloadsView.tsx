@@ -4,7 +4,7 @@
 import { useState } from 'react';
 import {
   Pause, Play, X, RotateCw, Check, Download, Trash2, GripVertical,
-  Plus, Minus, History, ArrowDownToLine, Gauge,
+  Plus, Minus, History, ArrowDownToLine, Gauge, Merge, Save,
 } from 'lucide-react';
 import { useQueue } from '@/ui/store/downloads';
 import { Sparkline } from '@/ui/components/downloads/Sparkline';
@@ -24,10 +24,11 @@ function etaHuman(sec?: number): string {
   return `${Math.floor(m / 60)}h ${m % 60}m`;
 }
 
-const ACTIVE = new Set(['queued', 'downloading', 'paused', 'error', 'canceled']);
+const ACTIVE = new Set(['queued', 'downloading', 'paused', 'error', 'canceled', 'awaiting_mux', 'muxing']);
 const STATUS_COLOR: Record<string, string> = {
   downloading: 'var(--rs-accent)', paused: 'var(--warn)', complete: 'var(--ok)',
   error: 'var(--danger)', canceled: 'var(--rs-tx-3)', queued: 'var(--rs-tx-2)',
+  awaiting_mux: 'var(--warn)', muxing: 'var(--rs-accent)',
 };
 
 function Ring({ pct, status }: { pct: number; status: string }) {
@@ -53,7 +54,7 @@ export function DownloadsView() {
   const history = useQueue((s) => s.history);
   const concurrency = useQueue((s) => s.concurrency);
   const spark = useQueue((s) => s.spark);
-  const { pause, resume, cancel, retry, remove, reorder, setConcurrency } = useQueue.getState();
+  const { pause, resume, cancel, retry, remove, reorder, setConcurrency, merge, saveSeparate } = useQueue.getState();
   const [showHistory, setShowHistory] = useState(true);
   const [dragId, setDragId] = useState<string | null>(null);
 
@@ -99,6 +100,7 @@ export function DownloadsView() {
                     dragging={dragId === j.id}
                     onPause={() => pause(j.id)} onResume={() => resume(j.id)} onCancel={() => cancel(j.id)}
                     onRetry={() => retry(j.id)} onRemove={() => remove(j.id)}
+                    onMerge={() => merge(j.id)} onSaveSeparate={() => saveSeparate(j.id)}
                   />
                 ))}
               </div>
@@ -136,10 +138,12 @@ interface RowProps {
   job: QueueJobView; spark: number[]; dragging: boolean;
   onDragStart: () => void; onDragOver: (e: Event) => void; onDrop: () => void;
   onPause: () => void; onResume: () => void; onCancel: () => void; onRetry: () => void; onRemove: () => void;
+  onMerge: () => void; onSaveSeparate: () => void;
 }
 function JobRow(p: RowProps) {
   const j = p.job;
-  const pct = j.total > 0 ? (j.loaded / j.total) * 100 : 0;
+  const muxing = j.status === 'muxing';
+  const pct = muxing ? (j.muxProgress ?? 0) * 100 : j.total > 0 ? (j.loaded / j.total) * 100 : 0;
   const color = STATUS_COLOR[j.status] || 'var(--rs-tx-2)';
   return (
     <div
@@ -164,8 +168,12 @@ function JobRow(p: RowProps) {
           {j.status === 'downloading' && <span>· {speedHuman(j.speed)}</span>}
           {j.status === 'downloading' && j.etaSec != null && <span>· ETA {etaHuman(j.etaSec)}</span>}
           {j.status === 'error' && j.error && <span style={{ color: 'var(--danger)' }}>· {j.error}</span>}
+          {muxing && <span>· {Math.round((j.muxProgress ?? 0) * 100)}%</span>}
           {!j.resumable && j.strategy !== 'segmented' && <span title={t('dl.noResume')}>· {t('dl.native')}</span>}
         </div>
+        {j.status === 'awaiting_mux' && (
+          <div className="mt-1 text-[11px]" style={{ color: 'var(--rs-tx-3)' }}>{t('dl.muxExplain')}</div>
+        )}
         <div className="mt-2 h-1 overflow-hidden rounded-full" style={{ background: 'var(--rs-line-2)' }}>
           <div className="h-full rounded-full" style={{ width: `${Math.min(100, pct)}%`, background: color, transition: 'width .2s' }} />
         </div>
@@ -174,6 +182,14 @@ function JobRow(p: RowProps) {
       {j.status === 'downloading' && <Sparkline data={p.spark} />}
 
       <div className="flex items-center gap-1" style={{ flex: 'none' }}>
+        {j.status === 'awaiting_mux' && j.canMerge && (
+          <>
+            <button type="button" onClick={p.onMerge} title={t('dl.merge')} className="inline-flex h-8 items-center gap-1 rounded-md px-2 text-[11px] font-semibold" style={{ background: 'var(--rs-accent)', color: '#08111d' }}>
+              <Merge size={14} /> {t('dl.merge')}
+            </button>
+            <button type="button" onClick={p.onSaveSeparate} title={t('dl.saveSeparate')} aria-label={t('dl.saveSeparate')} className="flex h-8 w-8 items-center justify-center rounded-md" style={{ color: 'var(--rs-tx-2)' }}><Save size={15} /></button>
+          </>
+        )}
         {j.status === 'downloading' && j.resumable && (
           <button type="button" onClick={p.onPause} title={t('dl.pause')} aria-label={t('dl.pause')} className="flex h-8 w-8 items-center justify-center rounded-md" style={{ color: 'var(--rs-tx-2)' }}><Pause size={15} /></button>
         )}

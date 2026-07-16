@@ -49,6 +49,9 @@ export type UiMessage =
   | { type: 'DOWNLOAD_REMOVE'; payload: { id: string } }
   | { type: 'DOWNLOAD_REORDER'; payload: { ids: string[] } }
   | { type: 'DOWNLOAD_SUBTITLE'; payload: { id: string; track: number } }
+  | { type: 'DOWNLOAD_MERGE'; payload: { id: string } }
+  | { type: 'DOWNLOAD_SAVE_SEPARATE'; payload: { id: string } }
+  | { type: 'ANALYZE_URL'; payload: { url: string; tabId?: number } }
   | { type: 'SET_CONCURRENCY'; payload: { n: number } }
   | { type: 'DOWNLOAD_RETRY'; payload: { id: string } }
   | { type: 'GET_DOWNLOADS' }
@@ -69,7 +72,23 @@ export type OffscreenRequest =
   | { type: 'RUN_FRAGMENTS'; payload: { id: string; segments: Array<{ url: string; range?: string | null }>; filename: string; mime: string } }
   | { type: 'RUN_RESUMABLE'; payload: { id: string; url: string; filename: string; parallel?: number; priorEtag?: string; priorLastModified?: string } }
   | { type: 'CONTROL_RESUMABLE'; payload: { id: string; action: 'pause' | 'cancel' } }
+  | { type: 'MUX_AV'; payload: { id: string; video: MuxFile; audio: MuxFile; outName: string } }
   | { type: 'REVOKE_BLOBS'; payload: { urls: string[] } };
+
+export interface MuxFile { blobUrl: string; filename: string }
+
+/** offscreen → background: progres/hasil mux ffmpeg.wasm. */
+export interface MuxState {
+  type: 'MUX_STATE';
+  payload: {
+    id: string;
+    status: 'muxing' | 'complete' | 'error';
+    progress?: number; // 0..1
+    blobUrl?: string;
+    size?: number;
+    error?: string;
+  };
+}
 export interface SegmentedResult {
   files: Array<{ blobUrl: string; filename: string }>;
   directDownloads: Array<{ url: string; filename: string }>;
@@ -114,6 +133,10 @@ export interface QueueJobView {
   resumable: boolean;
   quality?: string;
   error?: string;
+  /** Audio & video terpisah tersedia → bisa digabung dengan ffmpeg.wasm. */
+  canMerge?: boolean;
+  /** Progres mux 0..1 saat status 'muxing'. */
+  muxProgress?: number;
 }
 export interface QueueSnapshot {
   type: 'QUEUE';
@@ -129,7 +152,8 @@ export type BroadcastMessage =
   | { type: 'DOWNLOAD_PROGRESS'; payload: { id: string; done: number; total: number; bytes: number; speed?: number } }
   | { type: 'DOWNLOAD_DONE'; payload: { id: string } }
   | { type: 'DOWNLOAD_ERROR'; payload: { id: string; error: string } }
-  | ResumableState;
+  | ResumableState
+  | MuxState;
 
 export type ContractMessage = BridgeMessage | UiMessage;
 
