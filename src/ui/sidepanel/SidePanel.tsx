@@ -12,6 +12,8 @@ import { getFavorites, toggleFavorite, getHistory, type HistoryEntry } from '@/s
 import { LanguageSwitcher } from '@/ui/components/LanguageSwitcher';
 import { ThemeSwitcher } from '@/ui/components/ThemeSwitcher';
 import { Icon } from '@/ui/components/Icons';
+import { Button } from '@/ui/components/ui/button';
+import { RefreshCw } from 'lucide-react';
 import type { MediaItem, DownloadProgress } from '@/shared/types';
 import type { BroadcastMessage } from '@/shared/contract';
 import './panel.css';
@@ -146,6 +148,9 @@ export function SidePanel() {
           <div class="sp__name">{t('app.name')}</div>
           <div class="sp__sub">{t('count.summary', { shown: visible.length, total: items.length })}</div>
         </div>
+        <Button variant="outline" size="sm" onClick={() => refresh(activeTabRef.current)} title={t('action.rescan')}>
+          <RefreshCw size={13} /> {t('action.rescan')}
+        </Button>
         <ThemeSwitcher />
         <LanguageSwitcher />
       </header>

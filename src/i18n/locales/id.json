@@ -59,5 +59,6 @@
   "settings.theme": "Tema",
   "theme.dark": "Gelap",
   "theme.light": "Terang",
-  "theme.system": "Sistem"
+  "theme.system": "Sistem",
+  "action.rescan": "Pindai ulang"
 }

@@ -30,6 +30,7 @@ export function Player() {
   const [error, setError] = useState('');
   const [speed, setSpeed] = useState(1);
   const [levels, setLevels] = useState<HlsLevel[]>([]);
+  const [hlsLevel, setHlsLevel] = useState(-1); // level HLS terpilih (-1 = auto)
   const [pip, setPip] = useState(false);
 
   useEffect(() => {
@@ -51,10 +52,13 @@ export function Player() {
         engineRef.current = null;
         hlsRef.current = null;
         setLevels([]);
+        setHlsLevel(-1);
         const kind = mediaKind(media);
+        // Bug fix U0: muat kualitas TERBAIK (bestVariant), bukan media.url apa adanya.
+        const bestUrl = media.bestVariant?.url || media.url;
 
         if (kind === 'direct') {
-          video.src = media.url;
+          video.src = bestUrl;
         } else if (kind === 'hls') {
           if (video.canPlayType('application/vnd.apple.mpegurl')) {
             video.src = media.url; // Safari / native HLS
@@ -65,7 +69,11 @@ export function Player() {
               hls.loadSource(media.url);
               hls.attachMedia(video);
               hls.on((Hls as unknown as { Events: { MANIFEST_PARSED: string } }).Events.MANIFEST_PARSED, () => {
-                if (!disposed) setLevels(hls.levels || []);
+                if (disposed) return;
+                setLevels(hls.levels || []);
+                // Bug fix U0: mulai di level TERTINGGI (bukan ABR mulai rendah).
+                const top = (hls.levels?.length || 0) - 1;
+                if (top >= 0) { hls.currentLevel = top; setHlsLevel(top); }
               });
               hlsRef.current = hls;
               engineRef.current = { destroy: () => hls.destroy() };
@@ -102,6 +110,7 @@ export function Player() {
     if (videoRef.current) videoRef.current.playbackRate = s;
   }
   function changeLevel(index: number) {
+    setHlsLevel(index);
     if (hlsRef.current) hlsRef.current.currentLevel = index; // -1 = auto
   }
   // Pindah kualitas untuk file direct multi-varian: tukar src, pertahankan posisi.
@@ -144,8 +153,8 @@ export function Player() {
           <label class="ctl">
             {t('sort.quality')}
             {levels.length > 0 ? (
-              // HLS/DASH: ganti level via hls.js (adaptif).
-              <select onChange={(e) => changeLevel(Number((e.target as HTMLSelectElement).value))}>
+              // HLS: ganti level via hls.js (default = tertinggi, lihat MANIFEST_PARSED).
+              <select value={hlsLevel} onChange={(e) => changeLevel(Number((e.target as HTMLSelectElement).value))}>
                 <option value={-1}>Auto</option>
                 {levels.map((l, i) => (
                   <option key={i} value={i}>{l.height ? `${l.height}p` : `${Math.round((l.bitrate || 0) / 1000)}k`}</option>

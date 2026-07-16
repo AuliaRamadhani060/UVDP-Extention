@@ -59,5 +59,6 @@
   "settings.theme": "السمة",
   "theme.dark": "داكن",
   "theme.light": "فاتح",
-  "theme.system": "النظام"
+  "theme.system": "النظام",
+  "action.rescan": "إعادة الفحص"
 }

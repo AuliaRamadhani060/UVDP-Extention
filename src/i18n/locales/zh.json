@@ -59,5 +59,6 @@
   "settings.theme": "主题",
   "theme.dark": "深色",
   "theme.light": "浅色",
-  "theme.system": "系统"
+  "theme.system": "系统",
+  "action.rescan": "重新扫描"
 }
