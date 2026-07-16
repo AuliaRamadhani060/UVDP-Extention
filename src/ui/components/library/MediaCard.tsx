@@ -1,8 +1,9 @@
 // MediaCard (§4.5) — kartu media kaya: thumbnail/gradien per-kind, judul pintar,
 // strip provenance, tangga kualitas, aksi hover, dan progress unduhan.
-import type { ReactNode } from 'react';
-import { Play, Download, Copy, Star, Terminal, ShieldAlert, Film, Radio } from 'lucide-react';
+import { useState, type ReactNode } from 'react';
+import { Play, Download, Copy, Star, Terminal, ShieldAlert, Film, Radio, Captions } from 'lucide-react';
 import { useUvpd } from '@/ui/store/uvpd';
+import { useQueue } from '@/ui/store/downloads';
 import { ProvenanceStrip } from './ProvenanceStrip';
 import { QualityLadder } from './QualityLadder';
 import { viewKind, kindColorVar, kindLabel, smartName, metaTokens, mediaOrigin } from '@/ui/lib/media-view';
@@ -31,11 +32,17 @@ function IconBtn({ label, onClick, primary, active, children }: { label: string;
 
 export function MediaCard({ media, isMain }: { media: MediaItem; isMain?: boolean }) {
   const play = useUvpd((s) => s.play);
-  const download = useUvpd((s) => s.download);
+  const qDownload = useQueue((s) => s.download);
+  const subtitle = useQueue((s) => s.subtitle);
   const copyFfmpeg = useUvpd((s) => s.copyFfmpeg);
   const toggleFavorite = useUvpd((s) => s.toggleFavorite);
   const fav = useUvpd((s) => s.favorites.includes(media.url));
   const dl = useUvpd((s) => s.downloads[media.id]);
+
+  // Kualitas per-unduhan (untuk file multi-varian). undefined = terbaik (default).
+  const variants = (media.variants || []).filter((v) => v.url && (v.resolution || v.height));
+  const [quality, setQuality] = useState<string | undefined>(undefined);
+  const subs = media.subtitles || [];
 
   const k = viewKind(media);
   const color = kindColorVar(k);
@@ -101,7 +108,23 @@ export function MediaCard({ media, isMain }: { media: MediaItem; isMain?: boolea
 
         {/* Aksi */}
         <div className="mt-1 flex flex-wrap items-center gap-1.5">
-          {canDownload && <IconBtn label={t('media.download')} onClick={() => download(media.id)} primary><Download size={13} /> {t('media.download')}</IconBtn>}
+          {canDownload && <IconBtn label={t('media.download')} onClick={() => qDownload(media.id, { quality })} primary><Download size={13} /> {t('media.download')}</IconBtn>}
+          {canDownload && variants.length > 1 && (
+            <select
+              aria-label={t('sort.quality')}
+              value={quality ?? ''}
+              onChange={(e) => setQuality((e.target as HTMLSelectElement).value || undefined)}
+              className="h-7 rounded-md px-1.5 text-[11px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              style={{ background: 'var(--rs-card-hi)', color: 'var(--rs-tx-2)', border: '1px solid var(--rs-line)' }}
+            >
+              <option value="">{t('player.auto')}</option>
+              {variants.slice().reverse().map((v, i) => {
+                const label = v.resolution || `${v.height}p`;
+                return <option key={i} value={label}>{label}</option>;
+              })}
+            </select>
+          )}
+          {subs.length > 0 && <IconBtn label={t('dl.subtitle')} onClick={() => subtitle(media.id, subs.findIndex((s) => s.default) >= 0 ? subs.findIndex((s) => s.default) : 0)}><Captions size={13} /></IconBtn>}
           {isStream && <IconBtn label={t('media.ffmpeg')} onClick={() => copyFfmpeg(media.id)}><Terminal size={13} /></IconBtn>}
           <IconBtn label={t('media.copyLink')} onClick={() => navigator.clipboard.writeText(media.url)}><Copy size={13} /></IconBtn>
           <IconBtn label={t('media.favorite')} onClick={() => toggleFavorite(media.url)} active={fav}><Star size={13} fill={fav ? 'currentColor' : 'none'} /></IconBtn>

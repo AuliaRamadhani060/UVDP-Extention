@@ -6,7 +6,10 @@ import type { MediaRegistry } from '@/core/media-registry';
 import type { MediaItem } from '@/shared/types';
 import { getSettings, saveSettings, type Settings } from '@/shared/store';
 import { buildFfmpegCommand } from '@/core/media-utils';
-import { listDownloads, retryDownload } from './download-manager';
+import {
+  enqueue, cancelJob, pauseJob, resumeJob, removeJob, retryJob, reorder,
+  setConcurrency, downloadSubtitle, getSnapshot, listDownloadsCompat,
+} from './download-queue';
 
 const DIAG_KEY = 'uvpd:diag';
 const EMPTY_CHAIN: DiagChain = { main: false, bridge: false, background: false, offscreen: null };
@@ -15,8 +18,6 @@ export interface RouterDeps {
   registry: MediaRegistry;
   registerCandidate: (entry: Partial<MediaItem> & { url: string }, tabId?: number) => void;
   openPlayer: (id: string) => void;
-  download: (id: string) => void; // direct atau segmented (diputuskan background)
-  cancelDownload: (id: string) => void;
 }
 
 // --- Diagnostik (Fase 0) di storage.session → tahan SW tidur (§9) ---
@@ -89,19 +90,49 @@ export function registerRouter(deps: RouterDeps): void {
         return false;
       }
       case 'DOWNLOAD_MEDIA': {
-        deps.download(msg.payload.id); // background pilih direct vs segmented
+        const m = registry.get(msg.payload.id);
+        if (m) enqueue(m, { strategy: msg.payload.strategy, quality: msg.payload.quality });
         return false;
       }
       case 'DOWNLOAD_CANCEL': {
-        deps.cancelDownload(msg.payload.id);
+        cancelJob(msg.payload.id);
+        return false;
+      }
+      case 'DOWNLOAD_PAUSE': {
+        pauseJob(msg.payload.id);
+        return false;
+      }
+      case 'DOWNLOAD_RESUME': {
+        resumeJob(msg.payload.id);
+        return false;
+      }
+      case 'DOWNLOAD_REMOVE': {
+        removeJob(msg.payload.id);
+        return false;
+      }
+      case 'DOWNLOAD_REORDER': {
+        reorder(msg.payload.ids);
+        return false;
+      }
+      case 'SET_CONCURRENCY': {
+        setConcurrency(msg.payload.n);
+        return false;
+      }
+      case 'DOWNLOAD_SUBTITLE': {
+        const m = registry.get(msg.payload.id);
+        if (m) downloadSubtitle(m, msg.payload.track);
         return false;
       }
       case 'DOWNLOAD_RETRY': {
-        retryDownload(msg.payload.id);
+        retryJob(msg.payload.id);
         return false;
       }
       case 'GET_DOWNLOADS': {
-        sendResponse(listDownloads());
+        sendResponse(listDownloadsCompat());
+        return true;
+      }
+      case 'GET_QUEUE': {
+        sendResponse(getSnapshot());
         return true;
       }
       case 'COPY_FFMPEG': {

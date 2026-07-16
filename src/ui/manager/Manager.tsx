@@ -2,12 +2,14 @@
 import { useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useUvpd, useUvpdBridge, useApplyTheme, type ManagerView } from '@/ui/store/uvpd';
+import { useQueueBridge } from '@/ui/store/downloads';
 import { RailNav } from './RailNav';
 import { HeaderControls } from '@/ui/sidepanel/SidePanel';
 import { LibraryView } from '@/ui/components/library/LibraryView';
 import { PlayerView } from './views/PlayerView';
 import { DownloadsView } from './views/DownloadsView';
 import { SettingsView } from './views/SettingsView';
+import { DownloadDock } from '@/ui/components/downloads/DownloadDock';
 import { CommandPalette } from '@/ui/components/CommandPalette';
 import { Toaster } from '@/ui/components/Toaster';
 import { t } from '@/i18n';
@@ -18,6 +20,7 @@ const TITLES: Record<ManagerView, string> = {
 
 export function Manager() {
   useUvpdBridge();
+  useQueueBridge();
   useApplyTheme();
   const [cmdOpen, setCmdOpen] = useState(false);
   const view = useUvpd((s) => s.view);
@@ -49,6 +52,7 @@ export function Manager() {
         </div>
       </div>
       <CommandPalette open={cmdOpen} setOpen={setCmdOpen} />
+      <DownloadDock />
       <Toaster />
     </div>
   );
