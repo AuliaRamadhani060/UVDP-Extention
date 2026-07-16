@@ -4,10 +4,10 @@
 import { browser } from '@/platform/browser';
 import { MediaRegistry } from '@/core/media-registry';
 import { installNetSniffer } from './net-sniffer';
-import { cancelDownload } from './download-manager';
-import { downloadMedia } from './segmented';
+import { connectDownloadPort } from './download-queue';
 import { enrichManifest } from './enricher';
 import { registerRouter, patchDiagnostics } from './router';
+import { DOWNLOAD_PORT } from '@/shared/contract';
 import { noteFragment, clearFragmentsForTab } from './fragment-grouper';
 import { noteQualityFile, clearQualityForTab } from './quality-grouper';
 import { ensureRefererRule, probeSize } from './referer-spoof';
@@ -24,8 +24,11 @@ registerRouter({
   registry,
   registerCandidate: (entry, tabId) => registerAndEnrich(entry, tabId),
   openPlayer,
-  download: (id) => { const m = registry.get(id); if (m) downloadMedia(m); },
-  cancelDownload,
+});
+
+// Port streaming antrean unduhan (UI ⇄ background).
+browser.runtime.onConnect.addListener((port: { name: string; postMessage: (m: unknown) => void; onDisconnect: { addListener: (cb: () => void) => void } }) => {
+  if (port.name === DOWNLOAD_PORT) connectDownloadPort(port);
 });
 
 // Offscreen (Chromium) & diagnostik konteks ke-4.

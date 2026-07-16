@@ -15,6 +15,25 @@ export interface VideoDetail {
   url: string;
   duration?: number;
   subtitles: Track[];
+  poster?: string;
+}
+
+/** Tangkap satu frame <video> sebagai thumbnail JPEG (gagal senyap bila cross-origin/tainted). */
+function capturePoster(v: HTMLVideoElement): string | undefined {
+  try {
+    if (v.readyState < 2 || !v.videoWidth) return undefined;
+    const w = 320;
+    const h = Math.round((w * v.videoHeight) / v.videoWidth) || 180;
+    const canvas = document.createElement('canvas');
+    canvas.width = w;
+    canvas.height = h;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return undefined;
+    ctx.drawImage(v, 0, 0, w, h);
+    return canvas.toDataURL('image/jpeg', 0.6); // melempar SecurityError bila tainted
+  } catch {
+    return undefined;
+  }
 }
 
 /** URL media dari atribut elemen. */
@@ -52,6 +71,7 @@ export function scanVideos(root: ParentNode = document): VideoDetail[] {
       url: normalizeURL(src),
       duration: Number.isFinite(v.duration) ? v.duration : undefined,
       subtitles,
+      poster: capturePoster(v),
     });
   });
   return out;
@@ -96,6 +116,14 @@ export function scanPageText(root: ParentNode = document.body || document.docume
   const scanText = text.length > 2 * 1024 * 1024 ? text.slice(0, 2 * 1024 * 1024) : text;
   for (const m of scanText.matchAll(MEDIA_URL_REGEX)) found.add(normalizeURL(m[0]));
   return Array.from(found);
+}
+
+/** Judul pintar halaman: og:title / <title>, buang suffix nama situs. */
+export function smartTitle(): string {
+  const og = document.querySelector('meta[property="og:title"]')?.getAttribute('content');
+  const raw = (og || document.title || '').trim();
+  const cleaned = raw.replace(/\s*[|\-–—:·»]\s*[^|\-–—:·»]{1,45}$/, '').trim();
+  return (cleaned || raw).slice(0, 140);
 }
 
 export function observeDom(onChange: () => void): MutationObserver {

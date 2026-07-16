@@ -1,0 +1,152 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* =========================================================================
+   TOKEN LAMA (verbatim dari tokens.css) — surface lama tetap tampil identik.
+   Variabel shadcn diberi namespace --sh-* agar TIDAK bentrok dgn --accent/--border
+   milik desain lama. Token §4.1 "Ruang Sinyal" ditambahkan sbg tambahan (dipakai U1).
+   ========================================================================= */
+
+:root {
+  --sp-1: 4px; --sp-2: 8px; --sp-3: 12px; --sp-4: 16px; --sp-5: 24px; --sp-6: 32px;
+  --radius-sm: 6px; --radius: 10px; --radius-lg: 16px; --radius-full: 999px;
+  --font: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --fs-xs: 11px; --fs-sm: 12px; --fs-md: 14px; --fs-lg: 16px;
+  --transition: 160ms cubic-bezier(0.2, 0, 0, 1);
+  --accent: #e11d48; --accent-hover: #f43f5e; --accent-contrast: #ffffff;
+  --accent-soft: rgba(225, 29, 72, 0.12);
+  --stream: #2563eb; --stream-soft: rgba(37, 99, 235, 0.12);
+
+  /* --- §4.1 Ruang Sinyal (tersedia untuk U1; belum diterapkan ke surface lama) --- */
+  --rs-bg: #080a0f; --rs-surface: #0f131c; --rs-panel: #12161f; --rs-card: #141a25; --rs-card-hi: #18202d;
+  --rs-line: rgba(255,255,255,.07); --rs-line-2: rgba(255,255,255,.11); --rs-glass: rgba(18,23,33,.62);
+  --rs-tx: #eaeef5; --rs-tx-2: #98a3b4; --rs-tx-3: #5e6675;
+  --rs-accent: #5b8def; --rs-accent-2: #a374ff;
+  --direct: #35d6a0; --hls: #5b8def; --dash: #a374ff; --mse: #f5b54a; --frag: #ff6fb3;
+  --ok: #35d6a0; --warn: #f5b54a; --danger-rs: #ff5d6c;
+
+  /* --- shadcn (namespaced) — terang sbg default, gelap di bawah --- */
+  --sh-radius: 0.625rem;
+  --sh-background: 0 0% 100%; --sh-foreground: 222 30% 12%;
+  --sh-card: 0 0% 100%; --sh-card-foreground: 222 30% 12%;
+  --sh-popover: 0 0% 100%; --sh-popover-foreground: 222 30% 12%;
+  --sh-primary: 219 82% 55%; --sh-primary-foreground: 0 0% 100%;
+  --sh-secondary: 220 15% 94%; --sh-secondary-foreground: 222 30% 12%;
+  --sh-muted: 220 15% 94%; --sh-muted-foreground: 216 12% 42%;
+  --sh-accent: 262 80% 60%; --sh-accent-foreground: 0 0% 100%;
+  --sh-destructive: 353 80% 55%; --sh-destructive-foreground: 0 0% 100%;
+  --sh-border: 220 15% 88%; --sh-input: 220 15% 88%; --sh-ring: 219 82% 55%;
+}
+
+:root, :root[data-theme="light"] {
+  --bg: #ffffff; --bg-elev: #f6f7f9; --bg-hover: #eceef1; --surface: #ffffff;
+  --border: #e2e5ea; --border-strong: #d5d9e0; --text: #1a1d23; --text-muted: #6b7280;
+  --shadow: 0 4px 20px rgba(0, 0, 0, 0.12); --danger: #dc2626; --success: #16a34a; --warning: #d97706;
+}
+
+:root[data-theme="dark"] {
+  --bg: #16181d; --bg-elev: #1e2128; --bg-hover: #282c35; --surface: #1e2128;
+  --border: #2e3440; --border-strong: #3a404d; --text: #e6e8ec; --text-muted: #9aa1ad;
+  --shadow: 0 8px 28px rgba(0, 0, 0, 0.45); --danger: #f87171; --success: #4ade80; --warning: #fbbf24;
+  --accent-soft: rgba(244, 63, 94, 0.16); --stream: #60a5fa; --stream-soft: rgba(96, 165, 250, 0.16);
+  /* shadcn gelap */
+  --sh-background: 222 40% 5%; --sh-foreground: 216 30% 94%;
+  --sh-card: 222 30% 11%; --sh-card-foreground: 216 30% 94%;
+  --sh-popover: 222 32% 9%; --sh-popover-foreground: 216 30% 94%;
+  --sh-primary: 219 82% 65%; --sh-primary-foreground: 222 45% 8%;
+  --sh-secondary: 222 22% 16%; --sh-secondary-foreground: 216 30% 94%;
+  --sh-muted: 222 22% 16%; --sh-muted-foreground: 216 14% 64%;
+  --sh-accent: 262 100% 73%; --sh-accent-foreground: 216 30% 94%;
+  --sh-destructive: 353 100% 68%; --sh-destructive-foreground: 0 0% 100%;
+  --sh-border: 222 20% 18%; --sh-input: 222 20% 18%; --sh-ring: 219 82% 65%;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #16181d; --bg-elev: #1e2128; --bg-hover: #282c35; --surface: #1e2128;
+    --border: #2e3440; --text: #e6e8ec; --text-muted: #9aa1ad;
+    --shadow: 0 8px 28px rgba(0, 0, 0, 0.45); --danger: #f87171; --success: #4ade80; --warning: #fbbf24;
+    --sh-background: 222 40% 5%; --sh-foreground: 216 30% 94%;
+    --sh-card: 222 30% 11%; --sh-card-foreground: 216 30% 94%;
+    --sh-popover: 222 32% 9%; --sh-popover-foreground: 216 30% 94%;
+    --sh-primary: 219 82% 65%; --sh-primary-foreground: 222 45% 8%;
+    --sh-secondary: 222 22% 16%; --sh-secondary-foreground: 216 30% 94%;
+    --sh-muted: 222 22% 16%; --sh-muted-foreground: 216 14% 64%;
+    --sh-accent: 262 100% 73%; --sh-accent-foreground: 216 30% 94%;
+    --sh-destructive: 353 100% 68%; --sh-destructive-foreground: 0 0% 100%;
+    --sh-border: 222 20% 18%; --sh-input: 222 20% 18%; --sh-ring: 219 82% 65%;
+  }
+}
+
+/* Primitives bersama (dari tokens.css) */
+.uvpd-btn {
+  font-family: var(--font); font-size: var(--fs-sm);
+  border: 1px solid var(--border); background: var(--surface); color: var(--text);
+  border-radius: var(--radius-sm); padding: var(--sp-1) var(--sp-3); cursor: pointer;
+  transition: background var(--transition), border-color var(--transition);
+}
+.uvpd-btn:hover { background: var(--bg-hover); }
+.uvpd-btn--accent { background: var(--accent); border-color: var(--accent); color: var(--accent-contrast); }
+.uvpd-btn--accent:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
+
+/* =========================================================================
+   DESIGN SYSTEM "RUANG SINYAL" (§4) — dipakai side panel U1 (lewat .rs-root).
+   Font 3 peran, aksen dapat diganti (data-accent), densitas (data-density),
+   equalizer provenance, dan penghormatan reduced-motion.
+   ========================================================================= */
+:root {
+  --font-display: 'Space Grotesk Variable', 'Space Grotesk', system-ui, sans-serif;
+  --font-body: 'Inter Variable', 'Inter', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono Variable', 'JetBrains Mono', ui-monospace, monospace;
+
+  /* aksen default azure→violet (§4) */
+  --rs-accent: #5b8def; --rs-accent-2: #a374ff;
+  --rs-density-pad: 22px; --rs-density-gap: 16px; --rs-density-card: 14px;
+}
+[data-accent="emerald"] { --rs-accent: #35d6a0; --rs-accent-2: #2fb5ff; --sh-primary: 162 66% 52%; --sh-ring: 162 66% 52%; }
+[data-accent="magenta"] { --rs-accent: #ff6fb3; --rs-accent-2: #a374ff; --sh-primary: 330 100% 72%; --sh-ring: 330 100% 72%; }
+[data-accent="amber"]   { --rs-accent: #f5b54a; --rs-accent-2: #ff8f5b; --sh-primary: 38 90% 62%; --sh-ring: 38 90% 62%; }
+[data-density="compact"] { --rs-density-pad: 14px; --rs-density-gap: 10px; --rs-density-card: 10px; }
+
+/* Basis desain baru (di-scope agar surface lama tak terpengaruh; preflight OFF). */
+.rs-root, .rs-root * { box-sizing: border-box; }
+.rs-root {
+  font-family: var(--font-body);
+  background: var(--rs-bg);
+  color: var(--rs-tx);
+  -webkit-font-smoothing: antialiased;
+  accent-color: var(--rs-accent);
+}
+.rs-root ::-webkit-scrollbar { width: 10px; height: 10px; }
+.rs-root ::-webkit-scrollbar-thumb { background: var(--rs-line-2); border-radius: 8px; }
+.rs-mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+.rs-display { font-family: var(--font-display); letter-spacing: -0.02em; }
+
+/* Ambient glow halus di latar (§4.3) */
+.rs-ambient::before {
+  content: ''; position: fixed; inset: -20% -20% auto -20%; height: 60%; z-index: 0; pointer-events: none;
+  background:
+    radial-gradient(40% 60% at 22% 8%, color-mix(in oklab, var(--rs-accent) 22%, transparent), transparent 70%),
+    radial-gradient(38% 55% at 82% 4%, color-mix(in oklab, var(--rs-accent-2) 18%, transparent), transparent 70%);
+  filter: blur(24px); opacity: .5;
+}
+
+/* Equalizer mini provenance (§4.4) — bar naik-turun, warna diwariskan (currentColor). */
+@keyframes rs-eq { 0%,100% { transform: scaleY(.35); } 50% { transform: scaleY(1); } }
+.rs-eq { display: inline-flex; align-items: flex-end; gap: 1.5px; height: 11px; }
+.rs-eq i { width: 2px; height: 100%; background: currentColor; border-radius: 1px; transform-origin: bottom; animation: rs-eq 900ms ease-in-out infinite; }
+.rs-eq i:nth-child(2) { animation-delay: 150ms; }
+.rs-eq i:nth-child(3) { animation-delay: 300ms; }
+.rs-eq i:nth-child(4) { animation-delay: 450ms; }
+
+@media (prefers-reduced-motion: reduce) {
+  .rs-eq i { animation: none; transform: scaleY(.7); }
+  .rs-root *, .rs-root *::before, .rs-root *::after { animation-duration: .001ms !important; transition-duration: .001ms !important; }
+}
+
+/* cmdk (command palette) */
+[cmdk-item] { border-radius: 8px; }
+[cmdk-item][data-selected="true"] { background: var(--rs-card-hi); }
+[cmdk-item][data-disabled="true"] { opacity: .4; }
+[cmdk-group-heading] { padding: 8px 10px 3px; color: var(--rs-tx-3); font-family: var(--font-mono); font-size: 10px; letter-spacing: .04em; text-transform: uppercase; }

@@ -5,7 +5,15 @@ import { browser } from '@/platform/browser';
 import { parseDash } from '@/core/dash-parser';
 import { runSegmentedDownload } from '@/core/segmented-runner';
 import { downloadSegments } from '@/core/segment-downloader';
-import type { OffscreenRequest, OffscreenResponse } from '@/shared/contract';
+import { runResumableDownload, isRangeUnsupported } from '@/core/resumable-download';
+import type { OffscreenRequest, OffscreenResponse, ResumableState } from '@/shared/contract';
+
+// Kontrol jalannya unduhan resumable (pause/cancel) per-id.
+const resumableControl = new Map<string, { paused: boolean; canceled: boolean }>();
+
+function emitResumable(payload: ResumableState['payload']): void {
+  browser.runtime.sendMessage({ type: 'RESUMABLE_STATE', payload }).catch(() => {});
+}
 
 async function fetchText(url: string): Promise<string> {
   const res = await fetch(url, { credentials: 'include' });
@@ -43,6 +51,42 @@ browser.runtime.onMessage.addListener((
 
   if (msg?.type === 'REVOKE_BLOBS') {
     msg.payload.urls.forEach((u) => { try { URL.revokeObjectURL(u); } catch { /* noop */ } });
+    return false;
+  }
+
+  if (msg?.type === 'CONTROL_RESUMABLE') {
+    const ctrl = resumableControl.get(msg.payload.id);
+    if (ctrl) {
+      if (msg.payload.action === 'pause') ctrl.paused = true;
+      else ctrl.canceled = true;
+    }
+    return false;
+  }
+
+  if (msg?.type === 'RUN_RESUMABLE') {
+    const { id, url, filename, parallel, priorEtag, priorLastModified } = msg.payload;
+    const ctrl = { paused: false, canceled: false };
+    resumableControl.set(id, ctrl);
+    runResumableDownload(url, filename, {
+      fetchImpl: (u, init) => fetch(u, { credentials: 'include', ...init }),
+      parallel,
+      priorEtag,
+      priorLastModified,
+      isPaused: () => ctrl.paused,
+      isCancelled: () => ctrl.canceled,
+      onProgress: (loaded, total) => browser.runtime.sendMessage({ type: 'DOWNLOAD_PROGRESS', payload: { id, done: loaded, total, bytes: loaded } }).catch(() => {}),
+    })
+      .then((out) => {
+        if (out.status === 'complete') {
+          emitResumable({ id, status: 'complete', blobUrl: URL.createObjectURL(out.blob), totalBytes: out.info.totalBytes, etag: out.info.etag, lastModified: out.info.lastModified });
+        } else if (out.status === 'paused') {
+          emitResumable({ id, status: 'paused', totalBytes: out.info.totalBytes, etag: out.info.etag, lastModified: out.info.lastModified });
+        } else {
+          emitResumable({ id, status: 'canceled' });
+        }
+      })
+      .catch((e) => emitResumable({ id, status: 'error', rangeUnsupported: isRangeUnsupported(e), error: String((e as Error)?.message || e) }))
+      .finally(() => resumableControl.delete(id));
     return false;
   }
 
