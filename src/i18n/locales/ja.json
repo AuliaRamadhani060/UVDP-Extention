@@ -60,5 +60,11 @@
   "theme.dark": "ダーク",
   "theme.light": "ライト",
   "theme.system": "システム",
-  "action.rescan": "再スキャン"
+  "action.rescan": "再スキャン",
+  "filter.frag": "フラグ",
+  "ui.accent": "アクセント",
+  "ui.density": "密度",
+  "stat.media": "メディア",
+  "stat.streams": "ストリーム",
+  "stat.favorites": "お気に入り"
 }

@@ -1,294 +1,187 @@
-// Media Library — UI utama (Blueprint §5.8), berjalan di side panel / sidebar.
-import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
-import { browser } from '@/platform/browser';
-import { sendUi } from '@/shared/messaging';
-import { t } from '@/i18n';
-import { sizeHuman } from '@/core/url-utils';
-import {
-  mediaKind, mediaDisplayName, mediaOrigin, mediaQualityLabel, formatDuration,
-  mediaRelevanceScore, buildFfmpegCommand,
-} from '@/core/media-utils';
-import { getFavorites, toggleFavorite, getHistory, type HistoryEntry } from '@/shared/store';
-import { LanguageSwitcher } from '@/ui/components/LanguageSwitcher';
-import { ThemeSwitcher } from '@/ui/components/ThemeSwitcher';
-import { Icon } from '@/ui/components/Icons';
-import { Button } from '@/ui/components/ui/button';
-import { RefreshCw } from 'lucide-react';
-import type { MediaItem, DownloadProgress } from '@/shared/types';
-import type { BroadcastMessage } from '@/shared/contract';
-import './panel.css';
+// Media Library (U1) — desain "Ruang Sinyal": kartu kaya + provenance + kualitas.
+import { useMemo, useRef } from 'react';
+import { useVirtualizer } from '@tanstack/react-virtual';
+import { Film, RefreshCw, Sun, Moon, Monitor, Rows3, LayoutGrid, ScanSearch } from 'lucide-react';
+import { useUvpd, useUvpdBridge, useApplyTheme, type Accent, type SortKind } from '@/ui/store/uvpd';
+import { computeVisible, primaryId } from '@/ui/lib/media-view';
+import { MediaCard } from '@/ui/components/library/MediaCard';
+import { FilterChips } from '@/ui/components/library/FilterChips';
+import { SearchBar } from '@/ui/components/library/SearchBar';
+import { StatCard } from '@/ui/components/library/StatCard';
+import { Toaster } from '@/ui/components/Toaster';
+import { t, LOCALES, setLocale, localeSignal } from '@/i18n';
+import { viewKind } from '@/ui/lib/media-view';
 
-type Tab = 'media' | 'favorites' | 'history' | 'downloads';
-type Filter = 'all' | 'file' | 'hls' | 'dash';
-type Sort = 'relevance' | 'newest' | 'quality';
-interface DlState { done: number; total: number; status: string }
+const ACCENTS: Array<{ id: Accent; color: string }> = [
+  { id: 'azure', color: '#5b8def' },
+  { id: 'emerald', color: '#35d6a0' },
+  { id: 'magenta', color: '#ff6fb3' },
+  { id: 'amber', color: '#f5b54a' },
+];
 
-function displayKind(m: MediaItem): 'mse' | 'hls' | 'dash' | 'direct' | 'fragmented' {
-  if (m.kind === 'fragmented') return 'fragmented';
-  if (/^blob:/i.test(m.url)) return 'mse';
-  return mediaKind(m);
+function HeaderControls() {
+  const theme = useUvpd((s) => s.theme);
+  const setTheme = useUvpd((s) => s.setTheme);
+  const accent = useUvpd((s) => s.accent);
+  const setAccent = useUvpd((s) => s.setAccent);
+  const density = useUvpd((s) => s.density);
+  const setDensity = useUvpd((s) => s.setDensity);
+  const rescan = useUvpd((s) => s.rescan);
+  const nextTheme = theme === 'system' ? 'light' : theme === 'light' ? 'dark' : 'system';
+  const ThemeIcon = theme === 'dark' ? Moon : theme === 'light' ? Sun : Monitor;
+
+  const btn = 'inline-flex h-7 w-7 items-center justify-center rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring';
+  const btnStyle = { background: 'var(--rs-card)', border: '1px solid var(--rs-line)', color: 'var(--rs-tx-2)' } as const;
+
+  return (
+    <div className="flex items-center gap-1.5">
+      <button type="button" className={btn} style={btnStyle} title={t('action.rescan')} aria-label={t('action.rescan')} onClick={() => rescan()}><RefreshCw size={13} /></button>
+      <button type="button" className={btn} style={btnStyle} title={t('settings.theme')} aria-label={t('settings.theme')} onClick={() => setTheme(nextTheme)}><ThemeIcon size={13} /></button>
+      <button type="button" className={btn} style={btnStyle} title={t('ui.density')} aria-label={t('ui.density')} onClick={() => setDensity(density === 'comfortable' ? 'compact' : 'comfortable')}>
+        {density === 'comfortable' ? <Rows3 size={13} /> : <LayoutGrid size={13} />}
+      </button>
+      <div className="flex items-center gap-1 px-0.5" role="group" aria-label={t('ui.accent')}>
+        {ACCENTS.map((a) => (
+          <button
+            key={a.id}
+            type="button"
+            title={a.id}
+            aria-label={`${t('ui.accent')}: ${a.id}`}
+            aria-pressed={accent === a.id}
+            onClick={() => setAccent(a.id)}
+            className="h-3.5 w-3.5 rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            style={{ background: a.color, outline: accent === a.id ? '2px solid var(--rs-tx)' : 'none', outlineOffset: '1px' }}
+          />
+        ))}
+      </div>
+      <select
+        value={localeSignal.value}
+        onChange={(e) => setLocale((e.target as HTMLSelectElement).value)}
+        aria-label={t('settings.language')}
+        className="h-7 rounded-md px-1 text-[11px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        style={btnStyle}
+      >
+        {LOCALES.map((l) => <option key={l.code} value={l.code}>{l.code.toUpperCase()}</option>)}
+      </select>
+    </div>
+  );
 }
-function kindLabelKey(k: string): string {
-  return k === 'direct' ? 'kindLabel.direct' : `kindLabel.${k}`;
+
+function SortSelect() {
+  const sort = useUvpd((s) => s.sort);
+  const setSort = useUvpd((s) => s.setSort);
+  const opts: Array<{ v: SortKind; k: string }> = [
+    { v: 'relevance', k: 'sort.relevance' },
+    { v: 'recent', k: 'sort.newest' },
+    { v: 'quality', k: 'sort.quality' },
+  ];
+  return (
+    <select
+      value={sort}
+      onChange={(e) => setSort((e.target as HTMLSelectElement).value as SortKind)}
+      aria-label={t('sort.label')}
+      className="rounded-md px-2 py-2 text-[12px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      style={{ background: 'var(--rs-card)', border: '1px solid var(--rs-line)', color: 'var(--rs-tx-2)' }}
+    >
+      {opts.map((o) => <option key={o.v} value={o.v}>{t(o.k)}</option>)}
+    </select>
+  );
 }
-function tokensFor(m: MediaItem): string[] {
-  const out: string[] = [];
-  const q = mediaQualityLabel(m); if (q) out.push(q);
-  const d = formatDuration(m.duration); if (d) out.push(d);
-  if (m.sizeBytes) out.push(sizeHuman(m.sizeBytes));
-  if (m.segmentCount) out.push(t('token.segments', { n: m.segmentCount }));
-  if (m.variants?.length) out.push(t('token.qualities', { n: m.variants.length }));
-  if (m.audioTracks?.length) out.push(t('token.audio', { n: m.audioTracks.length }));
-  if (m.subtitles?.length) out.push(t('token.subtitle', { n: m.subtitles.length }));
-  return out;
+
+function SkeletonCard() {
+  return (
+    <div className="animate-pulse overflow-hidden rounded-card" style={{ background: 'var(--rs-card)', border: '1px solid var(--rs-line)' }}>
+      <div style={{ aspectRatio: '16 / 9', background: 'var(--rs-card-hi)' }} />
+      <div className="flex flex-col gap-2 p-3">
+        <div className="h-3 w-3/4 rounded" style={{ background: 'var(--rs-card-hi)' }} />
+        <div className="h-2 w-1/2 rounded" style={{ background: 'var(--rs-card-hi)' }} />
+        <div className="h-2 w-2/3 rounded" style={{ background: 'var(--rs-card-hi)' }} />
+      </div>
+    </div>
+  );
 }
 
 export function SidePanel() {
-  const [items, setItems] = useState<MediaItem[]>([]);
-  const [tab, setTab] = useState<Tab>('media');
-  const [filter, setFilter] = useState<Filter>('all');
-  const [sort, setSort] = useState<Sort>('relevance');
-  const [query, setQuery] = useState('');
-  const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [favorites, setFavorites] = useState<string[]>([]);
-  const [history, setHistory] = useState<HistoryEntry[]>([]);
-  const [downloads, setDownloads] = useState<Record<string, DlState>>({});
-  const [dls, setDls] = useState<DownloadProgress[]>([]);
-  const [activeTab, setActiveTab] = useState<number | undefined>();
+  useUvpdBridge();
+  useApplyTheme();
+  const media = useUvpd((s) => s.media);
+  const filter = useUvpd((s) => s.filter);
+  const query = useUvpd((s) => s.query);
+  const sort = useUvpd((s) => s.sort);
+  const favorites = useUvpd((s) => s.favorites);
+  const loading = useUvpd((s) => s.loading);
 
-  const refreshDownloads = () => sendUi<DownloadProgress[]>({ type: 'GET_DOWNLOADS' }).then((d) => setDls(d || []));
-  const activeTabRef = useRef<number | undefined>(undefined);
-  activeTabRef.current = activeTab;
+  const visible = useMemo(() => computeVisible(media, { filter, query, sort, favorites }), [media, filter, query, sort, favorites]);
+  const mainId = useMemo(() => primaryId(media), [media]);
+  const stats = useMemo(() => {
+    const all = Object.values(media);
+    const streams = all.filter((m) => { const k = viewKind(m); return k === 'hls' || k === 'dash' || k === 'fragmented'; }).length;
+    return { total: all.length, streams };
+  }, [media]);
 
-  async function refresh(tabId?: number) {
-    const res = await sendUi<{ entries: MediaItem[] }>({ type: 'GET_MEDIA_LIST', payload: { tabId } });
-    setItems(res?.entries || []);
-  }
-
-  useEffect(() => {
-    (async () => {
-      const [tabInfo] = await browser.tabs.query({ active: true, currentWindow: true });
-      setActiveTab(tabInfo?.id);
-      refresh(tabInfo?.id);
-    })();
-    getFavorites().then(setFavorites);
-    getHistory().then(setHistory);
-    refreshDownloads();
-
-    const onMsg = (raw: unknown) => {
-      const msg = raw as BroadcastMessage;
-      if (msg?.type === 'MEDIA_LIST_UPDATED') refresh(activeTabRef.current);
-      else if (msg?.type === 'DOWNLOAD_PROGRESS') setDownloads((d) => ({ ...d, [msg.payload.id]: { done: msg.payload.done, total: msg.payload.total, status: 'downloading' } }));
-      else if (msg?.type === 'DOWNLOAD_DONE') { setDownloads((d) => ({ ...d, [msg.payload.id]: { ...(d[msg.payload.id] || { done: 1, total: 1 }), status: 'complete' } })); refreshDownloads(); }
-      else if (msg?.type === 'DOWNLOAD_ERROR') refreshDownloads();
-    };
-    browser.runtime.onMessage.addListener(onMsg);
-    const onActivated = (info: { tabId: number }) => { setActiveTab(info.tabId); refresh(info.tabId); };
-    browser.tabs.onActivated.addListener(onActivated);
-    return () => {
-      browser.runtime.onMessage.removeListener(onMsg);
-      browser.tabs.onActivated.removeListener(onActivated);
-    };
-  }, []);
-
-  const counts = useMemo(() => {
-    const c = { all: items.length, file: 0, hls: 0, dash: 0, favorites: 0 };
-    for (const m of items) {
-      const k = displayKind(m);
-      if (k === 'hls') c.hls++; else if (k === 'dash') c.dash++; else c.file++;
-      if (favorites.includes(m.url)) c.favorites++;
-    }
-    return c;
-  }, [items, favorites]);
-
-  const primaryId = useMemo(() => {
-    const top = items.slice().sort((a, b) => mediaRelevanceScore(b) - mediaRelevanceScore(a))[0];
-    return top && (top.source === 'dom' || (top.variants?.length || 0) > 0 || displayKind(top) !== 'direct') ? top.id : '';
-  }, [items]);
-
-  const visible = useMemo(() => {
-    let list = items.slice();
-    if (tab === 'favorites') list = list.filter((m) => favorites.includes(m.url));
-    if (filter !== 'all') list = list.filter((m) => { const k = displayKind(m); return filter === 'file' ? k === 'direct' || k === 'mse' || k === 'fragmented' : k === filter; });
-    if (query.trim()) {
-      const q = query.toLowerCase();
-      list = list.filter((m) => m.url.toLowerCase().includes(q) || mediaDisplayName(m).toLowerCase().includes(q) || mediaOrigin(m).toLowerCase().includes(q));
-    }
-    list.sort((a, b) =>
-      sort === 'quality' ? (b.bestVariant?.height || 0) - (a.bestVariant?.height || 0)
-      : sort === 'newest' ? b.lastSeen - a.lastSeen
-      : mediaRelevanceScore(b) - mediaRelevanceScore(a));
-    return list;
-  }, [items, filter, tab, query, sort, favorites]);
-
-  async function onFavorite(m: MediaItem) { setFavorites(await toggleFavorite(m.url)); }
-  function toggleSelect(id: string) { setSelected((s) => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n; }); }
-  async function copyUrl(url: string) { await navigator.clipboard.writeText(url); sendUi({ type: 'NOTIFY', payload: { title: 'UVPD', message: t('media.copied') } }); }
-  async function copyFfmpeg(m: MediaItem) { await navigator.clipboard.writeText(buildFfmpegCommand(m.url)); sendUi({ type: 'NOTIFY', payload: { title: 'UVPD', message: 'ffmpeg → clipboard' } }); }
-  function batchDownload() {
-    for (const id of selected) {
-      const m = items.find((x) => x.id === id);
-      if (m && displayKind(m) === 'direct' && !m.protected) sendUi({ type: 'DOWNLOAD_MEDIA', payload: { id } });
-    }
-    setSelected(new Set());
-  }
-
-  const filters: Array<{ id: Filter; key: string; n: number }> = [
-    { id: 'all', key: 'filter.all', n: counts.all },
-    { id: 'file', key: 'filter.file', n: counts.file },
-    { id: 'hls', key: 'filter.hls', n: counts.hls },
-    { id: 'dash', key: 'filter.dash', n: counts.dash },
-  ];
+  const parentRef = useRef<HTMLDivElement>(null);
+  const virt = useVirtualizer({
+    count: visible.length,
+    getScrollElement: () => parentRef.current,
+    estimateSize: () => 250,
+    overscan: 6,
+  });
 
   return (
-    <div class="sp">
-      <header class="sp__head">
-        <span class="sp__logo"><Icon.film size={18} /></span>
-        <div class="sp__titles">
-          <div class="sp__name">{t('app.name')}</div>
-          <div class="sp__sub">{t('count.summary', { shown: visible.length, total: items.length })}</div>
+    <div className="rs-root rs-ambient relative flex h-screen flex-col">
+      <header className="relative z-10 flex items-center gap-2 px-4 py-3" style={{ borderBottom: '1px solid var(--rs-line)' }}>
+        <span className="flex h-8 w-8 items-center justify-center rounded-md" style={{ background: 'color-mix(in oklab, var(--rs-accent) 18%, transparent)', color: 'var(--rs-accent)' }}><Film size={17} /></span>
+        <div className="min-w-0 flex-1">
+          <div className="rs-display text-[16px] leading-none" style={{ color: 'var(--rs-tx)' }}>UVPD</div>
+          <div className="rs-mono text-[10px]" style={{ color: 'var(--rs-tx-3)' }}>{t('count.summary', { shown: visible.length, total: stats.total })}</div>
         </div>
-        <Button variant="outline" size="sm" onClick={() => refresh(activeTabRef.current)} title={t('action.rescan')}>
-          <RefreshCw size={13} /> {t('action.rescan')}
-        </Button>
-        <ThemeSwitcher />
-        <LanguageSwitcher />
       </header>
 
-      <nav class="tabs">
-        <button class={`tab ${tab === 'media' ? 'is-active' : ''}`} onClick={() => setTab('media')}>{t('tab.media')}</button>
-        <button class={`tab ${tab === 'favorites' ? 'is-active' : ''}`} onClick={() => setTab('favorites')}><Icon.star size={13} /> {t('tab.favorites')} <b>{counts.favorites}</b></button>
-        <button class={`tab ${tab === 'history' ? 'is-active' : ''}`} onClick={() => setTab('history')}><Icon.clock size={13} /> {t('tab.history')}</button>
-        <button class={`tab ${tab === 'downloads' ? 'is-active' : ''}`} onClick={() => { setTab('downloads'); refreshDownloads(); }}><Icon.download size={13} /> {t('tab.downloads')} {dls.length > 0 && <b>{dls.length}</b>}</button>
-      </nav>
+      <div className="relative z-10 flex items-center justify-end px-4 pt-2"><HeaderControls /></div>
 
-      {tab === 'downloads' ? (
-        <ul class="list">
-          {dls.length === 0 && <li class="empty"><strong>{t('empty.none')}</strong></li>}
-          {dls.map((d) => {
-            const live = downloads[d.id];
-            const done = live?.done ?? d.loaded;
-            const total = live?.total ?? d.total;
-            const status = live?.status ?? d.status;
-            const pct = total > 0 ? Math.round((done / total) * 100) : 0;
-            return (
-              <li key={d.id} class="dl">
-                <div class="dl__body">
-                  <div class="dl__name" title={d.filename}>{d.filename}</div>
-                  <div class="dl__meta">
-                    <span class={`dl__status dl__status--${status}`}>{status}</span>
-                    {total > 0 && status === 'downloading' && <span>{pct}% · {sizeHuman(done)}</span>}
-                  </div>
-                  {status === 'downloading' && total > 0 && <div class="progress"><div class="progress__bar" style={{ width: `${pct}%` }} /></div>}
-                </div>
-                {status === 'downloading' ? (
-                  <button class="iconbtn" title={t('media.clear')} onClick={() => sendUi({ type: 'DOWNLOAD_CANCEL', payload: { id: d.id } })}><Icon.close size={14} /></button>
-                ) : status === 'error' ? (
-                  <button class="btn" onClick={() => sendUi({ type: 'DOWNLOAD_RETRY', payload: { id: d.id } })}>↻</button>
-                ) : (
-                  <span class="dl__done"><Icon.check size={14} /></span>
-                )}
-              </li>
-            );
-          })}
-        </ul>
-      ) : tab === 'history' ? (
-        <ul class="list">
-          {history.length === 0 && <li class="empty"><strong>{t('empty.none')}</strong></li>}
-          {history.slice(0, 100).map((h) => (
-            <li key={h.url + h.time} class="hist">
-              <span class="hist__url" title={h.url}>{h.url}</span>
-              <button class="iconbtn" onClick={() => copyUrl(h.url)} title={t('media.copyLink')}><Icon.copy size={14} /></button>
-            </li>
-          ))}
-        </ul>
-      ) : (
-        <>
-          <div class="filters">
-            {filters.map((f) => (
-              <button key={f.id} class={`chip ${filter === f.id && tab === 'media' ? 'is-active' : ''}`} onClick={() => { setFilter(f.id); setTab('media'); }}>
-                {t(f.key)} <span class="chip__n">{f.n}</span>
-              </button>
-            ))}
-          </div>
-          <div class="toolbar">
-            <label class="search"><Icon.search size={14} /><input placeholder={t('search.placeholder')} value={query} onInput={(e) => setQuery((e.target as HTMLInputElement).value)} /></label>
-            <select class="select" value={sort} onChange={(e) => setSort((e.target as HTMLSelectElement).value as Sort)} aria-label={t('sort.label')}>
-              <option value="relevance">{t('sort.relevance')}</option>
-              <option value="newest">{t('sort.newest')}</option>
-              <option value="quality">{t('sort.quality')}</option>
-            </select>
-          </div>
+      {stats.total > 0 && (
+        <div className="relative z-10 grid grid-cols-3 gap-2 px-4 pt-3">
+          <StatCard label={t('stat.media')} value={stats.total} />
+          <StatCard label={t('stat.streams')} value={stats.streams} color="var(--hls)" />
+          <StatCard label={t('stat.favorites')} value={favorites.length} color="var(--warn)" />
+        </div>
+      )}
 
-          <ul class="list">
-            {visible.length === 0 && (
-              <li class="empty">
-                <strong>{items.length ? t('empty.noMatch') : t('empty.none')}</strong>
-                <span>{items.length ? t('empty.hintNoMatch') : t('empty.hintNone')}</span>
-              </li>
-            )}
-            {visible.map((m) => {
-              const kind = displayKind(m);
-              const fav = favorites.includes(m.url);
-              const dl = downloads[m.id];
-              const isMain = m.id === primaryId;
-              const isStream = kind === 'hls' || kind === 'dash';
+      <div className="relative z-10 flex flex-col gap-2 px-4 py-3">
+        <FilterChips />
+        <div className="flex items-center gap-2"><SearchBar /><SortSelect /></div>
+      </div>
+
+      <div ref={parentRef} className="relative z-10 flex-1 overflow-y-auto px-4 pb-4">
+        {loading && visible.length === 0 ? (
+          <div className="flex flex-col gap-3">{[0, 1, 2, 3].map((i) => <SkeletonCard key={i} />)}</div>
+        ) : visible.length === 0 ? (
+          <div className="flex flex-col items-center gap-2 py-16 text-center">
+            <ScanSearch size={30} style={{ color: 'var(--rs-tx-3)' }} />
+            <div className="text-[13px]" style={{ color: 'var(--rs-tx)' }}>{stats.total ? t('empty.noMatch') : t('empty.none')}</div>
+            <div className="text-[12px]" style={{ color: 'var(--rs-tx-3)' }}>{stats.total ? t('empty.hintNoMatch') : t('empty.hintNone')}</div>
+          </div>
+        ) : (
+          <div className="relative" style={{ height: `${virt.getTotalSize()}px` }}>
+            {virt.getVirtualItems().map((vi) => {
+              const m = visible[vi.index];
               return (
-                <li key={m.id} class={`card ${m.protected ? 'is-protected' : ''} ${isMain ? 'is-main' : ''}`}>
-                  <label class="card__check"><input type="checkbox" checked={selected.has(m.id)} onChange={() => toggleSelect(m.id)} /></label>
-                  <span class={`card__icon k-${kind}`}>{kind === 'direct' || kind === 'mse' ? <Icon.film size={16} /> : <Icon.stream size={16} />}</span>
-                  <div class="card__body">
-                    <div class="card__title" title={m.url}>{m.title || mediaDisplayName(m)}</div>
-                    <div class="card__tags">
-                      <span class={`badge k-${kind}`}>{t(kindLabelKey(kind))}</span>
-                      {isMain && <span class="badge badge--main">{t('badge.main')}</span>}
-                      <span class="muted">{mediaOrigin(m)}</span>
-                      {m.protected && <span class="badge badge--drm"><Icon.shield size={11} /> DRM</span>}
-                    </div>
-                    <div class="card__url" title={m.url}>{m.url}</div>
-                    <div class="card__meta">
-                      <span class="muted">{t(`source.${m.source}`)}</span>
-                      {tokensFor(m).map((tok, i) => <span key={i} class="tok">{tok}</span>)}
-                    </div>
-                    {m.variants && m.variants.length > 0 && (
-                      <div class="variants">
-                        {m.variants.slice(0, 4).map((v, i) => (
-                          <span key={i} class={`vchip ${m.bestVariant?.url === v.url ? 'is-best' : ''}`}>{v.resolution || `${v.height || ''}p`}</span>
-                        ))}
-                        {m.variants.length > 4 && <span class="vchip vchip--more">+{m.variants.length - 4}</span>}
-                      </div>
-                    )}
-                    <div class="card__actions">
-                      {m.protected ? (
-                        <span class="lock"><Icon.shield size={13} /> {t('media.protected')}</span>
-                      ) : (
-                        <>
-                          {kind !== 'mse' && kind !== 'fragmented' && <button class="btn btn--primary" onClick={() => sendUi({ type: 'PLAY_MEDIA', payload: { id: m.id } })}><Icon.play size={13} /> {t('media.play')}</button>}
-                          {(kind !== 'mse' || m.url.startsWith('mse://')) && <button class="btn" onClick={() => sendUi({ type: 'DOWNLOAD_MEDIA', payload: { id: m.id } })}><Icon.download size={13} /> {t('media.download')}</button>}
-                          {isStream && <button class="btn" onClick={() => copyFfmpeg(m)}>{t('media.ffmpeg')}</button>}
-                        </>
-                      )}
-                      <button class="btn btn--ghost" onClick={() => copyUrl(m.url)} title={t('media.copyLink')}><Icon.copy size={13} /></button>
-                      <button class={`btn btn--ghost ${fav ? 'is-fav' : ''}`} onClick={() => onFavorite(m)} title={t('media.favorite')}><Icon.star size={13} /></button>
-                    </div>
-                    {dl && dl.total > 0 && dl.status !== 'complete' && (
-                      <div class="progress"><div class="progress__bar" style={{ width: `${Math.round((dl.done / dl.total) * 100)}%` }} /></div>
-                    )}
-                  </div>
-                </li>
+                <div
+                  key={m.id}
+                  data-index={vi.index}
+                  ref={virt.measureElement}
+                  className="absolute left-0 top-0 w-full"
+                  style={{ transform: `translateY(${vi.start}px)`, paddingBottom: 'var(--rs-density-gap)' }}
+                >
+                  <MediaCard media={m} isMain={m.id === mainId} />
+                </div>
               );
             })}
-          </ul>
+          </div>
+        )}
+      </div>
 
-          {selected.size > 0 && (
-            <footer class="selbar">
-              <span>{t('media.selected', { n: selected.size })}</span>
-              <button class="btn btn--primary" onClick={batchDownload}><Icon.download size={13} /> {t('media.downloadSelected')}</button>
-              <button class="btn btn--ghost" onClick={() => setSelected(new Set())}>{t('media.clear')}</button>
-            </footer>
-          )}
-        </>
-      )}
+      <Toaster />
     </div>
   );
 }

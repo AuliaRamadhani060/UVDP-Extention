@@ -4,7 +4,7 @@
 // panel in-page). Enrichment manifest kini digerakkan background (Blueprint §3.3).
 import { browser } from '@/platform/browser';
 import { sendBridge } from '@/shared/messaging';
-import { scanDomForMedia, scanVideos, scanScripts, scanPageText, scanAttributes, observeDom } from './dom-scanner';
+import { scanDomForMedia, scanVideos, scanScripts, scanPageText, scanAttributes, smartTitle, observeDom } from './dom-scanner';
 import { classifyFromUrl, toMediaItem } from './detect';
 import { mseOpen, mseChunk, mseFinalize, findStreamIdByEntry } from './mse-capture';
 import { getSettings, isHostEnabled, pushHistory } from '@/shared/store';
@@ -23,14 +23,14 @@ function report(url: string, source: MediaItem['source'], extra: Partial<MediaIt
   if (!extra.protected && !explicitStream && !isListableMediaUrl(url)) return;
   seen.add(url);
   const kind = (extra.kind as MediaKind) || classifyFromUrl(url);
-  const item = toMediaItem(url, kind, source, extra);
+  const item = toMediaItem(url, kind, source, { pageTitle: smartTitle(), ...extra });
   sendBridge({ type: 'MEDIA_CANDIDATE', payload: item });
   pushHistory({ url, time: Date.now(), type: source });
 }
 
 function scan(): void {
   if (!enabled) return;
-  for (const v of scanVideos()) report(v.url, 'dom', { subtitles: v.subtitles, duration: v.duration });
+  for (const v of scanVideos()) report(v.url, 'dom', { subtitles: v.subtitles, duration: v.duration, poster: v.poster });
   for (const url of scanDomForMedia()) report(url, 'dom');
   for (const url of scanAttributes()) report(url, 'dom');
   for (const url of scanScripts()) report(url, 'text-scan');

@@ -27,6 +27,16 @@ module.exports = {
         lg: 'var(--sh-radius)',
         md: 'calc(var(--sh-radius) - 2px)',
         sm: 'calc(var(--sh-radius) - 4px)',
+        card: '16px',
+        panel: '22px',
+      },
+      fontFamily: {
+        display: 'var(--font-display)',
+        sans: 'var(--font-body)',
+        mono: 'var(--font-mono)',
+      },
+      boxShadow: {
+        elev: '0 24px 60px -24px rgba(0,0,0,.85)',
       },
     },
   },

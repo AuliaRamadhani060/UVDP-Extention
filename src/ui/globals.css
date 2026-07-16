@@ -89,3 +89,58 @@
 .uvpd-btn:hover { background: var(--bg-hover); }
 .uvpd-btn--accent { background: var(--accent); border-color: var(--accent); color: var(--accent-contrast); }
 .uvpd-btn--accent:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
+
+/* =========================================================================
+   DESIGN SYSTEM "RUANG SINYAL" (§4) — dipakai side panel U1 (lewat .rs-root).
+   Font 3 peran, aksen dapat diganti (data-accent), densitas (data-density),
+   equalizer provenance, dan penghormatan reduced-motion.
+   ========================================================================= */
+:root {
+  --font-display: 'Space Grotesk Variable', 'Space Grotesk', system-ui, sans-serif;
+  --font-body: 'Inter Variable', 'Inter', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono Variable', 'JetBrains Mono', ui-monospace, monospace;
+
+  /* aksen default azure→violet (§4) */
+  --rs-accent: #5b8def; --rs-accent-2: #a374ff;
+  --rs-density-pad: 22px; --rs-density-gap: 16px; --rs-density-card: 14px;
+}
+[data-accent="emerald"] { --rs-accent: #35d6a0; --rs-accent-2: #2fb5ff; --sh-primary: 162 66% 52%; --sh-ring: 162 66% 52%; }
+[data-accent="magenta"] { --rs-accent: #ff6fb3; --rs-accent-2: #a374ff; --sh-primary: 330 100% 72%; --sh-ring: 330 100% 72%; }
+[data-accent="amber"]   { --rs-accent: #f5b54a; --rs-accent-2: #ff8f5b; --sh-primary: 38 90% 62%; --sh-ring: 38 90% 62%; }
+[data-density="compact"] { --rs-density-pad: 14px; --rs-density-gap: 10px; --rs-density-card: 10px; }
+
+/* Basis desain baru (di-scope agar surface lama tak terpengaruh; preflight OFF). */
+.rs-root, .rs-root * { box-sizing: border-box; }
+.rs-root {
+  font-family: var(--font-body);
+  background: var(--rs-bg);
+  color: var(--rs-tx);
+  -webkit-font-smoothing: antialiased;
+  accent-color: var(--rs-accent);
+}
+.rs-root ::-webkit-scrollbar { width: 10px; height: 10px; }
+.rs-root ::-webkit-scrollbar-thumb { background: var(--rs-line-2); border-radius: 8px; }
+.rs-mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+.rs-display { font-family: var(--font-display); letter-spacing: -0.02em; }
+
+/* Ambient glow halus di latar (§4.3) */
+.rs-ambient::before {
+  content: ''; position: fixed; inset: -20% -20% auto -20%; height: 60%; z-index: 0; pointer-events: none;
+  background:
+    radial-gradient(40% 60% at 22% 8%, color-mix(in oklab, var(--rs-accent) 22%, transparent), transparent 70%),
+    radial-gradient(38% 55% at 82% 4%, color-mix(in oklab, var(--rs-accent-2) 18%, transparent), transparent 70%);
+  filter: blur(24px); opacity: .5;
+}
+
+/* Equalizer mini provenance (§4.4) — bar naik-turun, warna diwariskan (currentColor). */
+@keyframes rs-eq { 0%,100% { transform: scaleY(.35); } 50% { transform: scaleY(1); } }
+.rs-eq { display: inline-flex; align-items: flex-end; gap: 1.5px; height: 11px; }
+.rs-eq i { width: 2px; height: 100%; background: currentColor; border-radius: 1px; transform-origin: bottom; animation: rs-eq 900ms ease-in-out infinite; }
+.rs-eq i:nth-child(2) { animation-delay: 150ms; }
+.rs-eq i:nth-child(3) { animation-delay: 300ms; }
+.rs-eq i:nth-child(4) { animation-delay: 450ms; }
+
+@media (prefers-reduced-motion: reduce) {
+  .rs-eq i { animation: none; transform: scaleY(.7); }
+  .rs-root *, .rs-root *::before, .rs-root *::after { animation-duration: .001ms !important; transition-duration: .001ms !important; }
+}

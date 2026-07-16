@@ -60,5 +60,11 @@
   "theme.dark": "Dark",
   "theme.light": "Light",
   "theme.system": "System",
-  "action.rescan": "Rescan"
+  "action.rescan": "Rescan",
+  "filter.frag": "Frag",
+  "ui.accent": "Accent",
+  "ui.density": "Density",
+  "stat.media": "Media",
+  "stat.streams": "Streams",
+  "stat.favorites": "Favorites"
 }

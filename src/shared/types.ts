@@ -42,6 +42,8 @@ export interface MediaItem {
   sizeBytes?: number;
   duration?: number;
   title?: string;
+  pageTitle?: string; // judul halaman (og:title/<title>) — judul pintar fallback
+  poster?: string; // thumbnail dataURL dari frame <video> (bila bisa ditangkap)
   segmentCount?: number; // untuk stream terkelompok dari fragmen (kind 'fragmented')
   fragmentType?: 'video' | 'audio' | 'unknown';
 

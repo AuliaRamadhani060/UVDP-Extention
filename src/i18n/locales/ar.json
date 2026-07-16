@@ -60,5 +60,11 @@
   "theme.dark": "داكن",
   "theme.light": "فاتح",
   "theme.system": "النظام",
-  "action.rescan": "إعادة الفحص"
+  "action.rescan": "إعادة الفحص",
+  "filter.frag": "مجزّأ",
+  "ui.accent": "لون التمييز",
+  "ui.density": "الكثافة",
+  "stat.media": "وسائط",
+  "stat.streams": "بث",
+  "stat.favorites": "المفضلة"
 }

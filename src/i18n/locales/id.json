@@ -60,5 +60,11 @@
   "theme.dark": "Gelap",
   "theme.light": "Terang",
   "theme.system": "Sistem",
-  "action.rescan": "Pindai ulang"
+  "action.rescan": "Pindai ulang",
+  "filter.frag": "Fragmen",
+  "ui.accent": "Aksen",
+  "ui.density": "Kepadatan",
+  "stat.media": "Media",
+  "stat.streams": "Stream",
+  "stat.favorites": "Favorit"
 }
