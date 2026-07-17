@@ -37,6 +37,9 @@
   "host_permissions": [
     "<all_urls>"
   ],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'"
+  },
   "background": {
     "service_worker": "service-worker-loader.js",
     "type": "module"
@@ -44,7 +47,7 @@
   "content_scripts": [
     {
       "js": [
-        "assets/index.ts-loader-CY8nJkyv.js"
+        "assets/index.ts-loader-ChoHWHud.js"
       ],
       "matches": [
         "<all_urls>"
@@ -54,7 +57,7 @@
     },
     {
       "js": [
-        "assets/hooks.ts-BZqKPkzn.js"
+        "assets/hooks.ts-CT5-j4fB.js"
       ],
       "matches": [
         "<all_urls>"
@@ -72,17 +75,11 @@
       "resources": [
         "src/ui/player/player.html",
         "assets/browser-BoNqcQYh.js",
-        "assets/browser-BoNqcQYh.js.map",
         "assets/messaging-C46JWWw6.js",
-        "assets/messaging-C46JWWw6.js.map",
         "assets/url-utils-CWjXbvFi.js",
-        "assets/url-utils-CWjXbvFi.js.map",
-        "assets/store-B3RAS7mn.js",
-        "assets/store-B3RAS7mn.js.map",
-        "assets/index.ts-LlAYPlzK.js",
-        "assets/index.ts-LlAYPlzK.js.map",
-        "assets/hooks.ts-BZqKPkzn.js",
-        "assets/hooks.ts-BZqKPkzn.js.map"
+        "assets/store-DYY30iuK.js",
+        "assets/index.ts-D6-Odkju.js",
+        "assets/hooks.ts-CT5-j4fB.js"
       ],
       "use_dynamic_url": false
     }
