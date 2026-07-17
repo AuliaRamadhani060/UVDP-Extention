@@ -23,11 +23,10 @@ export function CommandPalette({ open, setOpen }: { open: boolean; setOpen: (v: 
   const setSelected = useUvpd((s) => s.setSelected);
   const rescan = useUvpd((s) => s.rescan);
 
+  // Catatan (U6): pintasan ⌘K/Ctrl+K & Esc kini ditangani di Manager agar
+  // komponen ini (beserta cmdk) bisa dimuat lazy — hanya saat palette dibuka.
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); setOpen(!open); }
-      else if (e.key === 'Escape' && open) setOpen(false);
-    };
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape' && open) setOpen(false); };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
   }, [open, setOpen]);

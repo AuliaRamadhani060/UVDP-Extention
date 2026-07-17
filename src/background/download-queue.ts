@@ -12,6 +12,7 @@ import { runResumableDownload, isRangeUnsupported } from '@/core/resumable-downl
 import { runSegmentedDownload } from '@/core/segmented-runner';
 import { downloadSegments } from '@/core/segment-downloader';
 import { vttToSrt, looksLikeVtt } from '@/core/subtitle';
+import { getSettings, saveSettings } from '@/shared/store';
 import { isOffscreenAvailable, ensureOffscreen } from './offscreen-manager';
 import { getGroupSegments, getSiblingAudioId } from './fragment-grouper';
 import { ensureRefererRule } from './referer-spoof';
@@ -59,7 +60,6 @@ const localResumableCtl = new Map<string, { paused: boolean; canceled: boolean }
 
 const QUEUE_KEY = 'uvpd:queue';
 const HISTORY_KEY = 'uvpd:dlhistory';
-const CONC_KEY = 'uvpd:dlconc';
 
 function notify(message: string): void {
   browser.notifications.create({ type: 'basic', iconUrl: browser.runtime.getURL('icons/icon-48.png'), title: 'UVPD', message }).catch(() => {});
@@ -138,13 +138,14 @@ function schedulePersist(): void {
       strategy: j.strategy, quality: j.quality, status: j.status, loaded: j.loaded, total: j.total,
       order: j.order, createdAt: j.createdAt, resumable: j.resumable, etag: j.etag, lastModified: j.lastModified,
     }));
-    browser.storage.local.set({ [QUEUE_KEY]: plain, [HISTORY_KEY]: history.slice(0, 100), [CONC_KEY]: concurrency }).catch(() => {});
+    browser.storage.local.set({ [QUEUE_KEY]: plain, [HISTORY_KEY]: history.slice(0, 100) }).catch(() => {});
   }, 400);
 }
 async function hydrate(): Promise<void> {
   try {
-    const res = await browser.storage.local.get([QUEUE_KEY, HISTORY_KEY, CONC_KEY]);
-    concurrency = (res[CONC_KEY] as number) || 3;
+    // Konkurensi = satu sumber kebenaran: Settings (diatur di Options).
+    getSettings().then((s) => { concurrency = s.maxConcurrentDownloads; push(); pump(); }).catch(() => {});
+    const res = await browser.storage.local.get([QUEUE_KEY, HISTORY_KEY]);
     history = (res[HISTORY_KEY] as QueueJobView[]) || [];
     for (const p of (res[QUEUE_KEY] as Partial<Job>[]) || []) {
       if (!p.id || !p.url) continue;
@@ -428,6 +429,8 @@ export function reorder(ids: string[]): void {
 }
 export function setConcurrency(n: number): void {
   concurrency = Math.max(1, Math.min(8, Math.floor(n) || 1));
+  // Simpan ke Settings (sumber kebenaran) agar Options & antrean selalu sinkron.
+  getSettings().then((s) => saveSettings({ ...s, maxConcurrentDownloads: concurrency })).catch(() => {});
   push(); pump();
 }
 

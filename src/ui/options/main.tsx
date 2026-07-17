@@ -1,11 +1,11 @@
 import { render } from 'preact';
 import { initLocale } from '@/i18n';
-import { initTheme } from '@/ui/theme/theme';
 import { Options } from './Options';
 import '@/ui/globals.css';
 
+// Tema/aksen/densitas diterapkan di dalam Options (dari preferensi tersimpan).
 async function boot() {
-  await Promise.all([initLocale(), initTheme()]);
+  await initLocale();
   render(<Options />, document.getElementById('app')!);
 }
 boot();

@@ -1,5 +1,5 @@
 // Media Manager (§2) — wujud tab penuh. RailNav + 4 view + ⌘K + transisi.
-import { useState } from 'react';
+import { useState, useEffect, lazy, Suspense } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { ClipboardPaste } from 'lucide-react';
 import { useUvpd, useUvpdBridge, useApplyTheme, type ManagerView } from '@/ui/store/uvpd';
@@ -12,9 +12,11 @@ import { PlayerView } from './views/PlayerView';
 import { DownloadsView } from './views/DownloadsView';
 import { SettingsView } from './views/SettingsView';
 import { DownloadDock } from '@/ui/components/downloads/DownloadDock';
-import { CommandPalette } from '@/ui/components/CommandPalette';
 import { Toaster } from '@/ui/components/Toaster';
 import { t } from '@/i18n';
+
+// Perf (U6): cmdk hanya diunduh saat palette pertama kali dibuka.
+const CommandPalette = lazy(() => import('@/ui/components/CommandPalette').then((m) => ({ default: m.CommandPalette })));
 
 const TITLES: Record<ManagerView, string> = {
   library: 'nav.library', player: 'nav.player', downloads: 'nav.downloads', settings: 'nav.settings',
@@ -27,6 +29,15 @@ export function Manager() {
   const dragging = useUrlIntake();
   const [cmdOpen, setCmdOpen] = useState(false);
   const view = useUvpd((s) => s.view);
+
+  // Pintasan palette hidup di sini (ringan) agar komponen cmdk tetap lazy.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); setCmdOpen((v) => !v); }
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, []);
 
   return (
     <div className="rs-root rs-ambient relative flex h-screen">
@@ -60,7 +71,11 @@ export function Manager() {
           <div className="text-[13px]" style={{ color: 'var(--rs-tx)' }}>{t('intake.drop')}</div>
         </div>
       )}
-      <CommandPalette open={cmdOpen} setOpen={setCmdOpen} />
+      {cmdOpen && (
+        <Suspense fallback={null}>
+          <CommandPalette open={cmdOpen} setOpen={setCmdOpen} />
+        </Suspense>
+      )}
       <DownloadDock />
       <Toaster />
     </div>

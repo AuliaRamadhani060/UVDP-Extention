@@ -4,21 +4,19 @@ import { create } from 'zustand';
 import { useEffect } from 'react';
 import { browser } from '@/platform/browser';
 import { sendUi } from '@/shared/messaging';
-import { getFavorites, toggleFavorite as persistToggleFav } from '@/shared/store';
+import { getFavorites, toggleFavorite as persistToggleFav, getUiPrefs, saveUiPrefs, K_UI } from '@/shared/store';
 import { buildFfmpegCommand } from '@/core/media-utils';
 import type { MediaItem, DownloadProgress } from '@/shared/types';
 import type { BroadcastMessage } from '@/shared/contract';
+import type { Theme, Accent, Density } from '@/shared/store';
 
-export type Theme = 'dark' | 'light' | 'system';
-export type Accent = 'azure' | 'emerald' | 'magenta' | 'amber';
-export type Density = 'comfortable' | 'compact';
+// Tipe preferensi tampilan kini hidup di shared/store (dipakai Options juga).
+export type { Theme, Accent, Density };
 export type FilterKind = 'all' | 'file' | 'hls' | 'dash' | 'mse' | 'fragmented' | 'favorites';
 export type SortKind = 'relevance' | 'recent' | 'quality';
 /** Filter provenance (U5): dari mana/bagaimana media tertangkap. */
 export type ProvenanceFilter = 'any' | 'iframe' | 'reassembled' | 'spa';
 export type ManagerView = 'library' | 'player' | 'downloads' | 'settings';
-
-const UI_KEY = 'uvpd:ui';
 
 interface UvpdState {
   media: Record<string, MediaItem>;
@@ -64,7 +62,7 @@ interface UvpdState {
 }
 
 function persistUi(s: Pick<UvpdState, 'theme' | 'accent' | 'density'>): void {
-  browser.storage.local.set({ [UI_KEY]: { theme: s.theme, accent: s.accent, density: s.density } }).catch(() => {});
+  saveUiPrefs({ theme: s.theme, accent: s.accent, density: s.density }).catch(() => {});
 }
 
 export const useUvpd = create<UvpdState>((set, get) => ({
@@ -138,9 +136,8 @@ export function useUvpdBridge(): void {
     (async () => {
       // preferensi UI tersimpan
       try {
-        const res = await browser.storage.local.get(UI_KEY);
-        const ui = res[UI_KEY] as Partial<Pick<UvpdState, 'theme' | 'accent' | 'density'>> | undefined;
-        if (ui) useUvpd.setState({ theme: ui.theme ?? 'system', accent: ui.accent ?? 'azure', density: ui.density ?? 'comfortable' });
+        const ui = await getUiPrefs();
+        useUvpd.setState({ theme: ui.theme, accent: ui.accent, density: ui.density });
       } catch { /* noop */ }
       getFavorites().then(store.setFavorites);
       const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
@@ -156,11 +153,19 @@ export function useUvpdBridge(): void {
       useUvpd.getState().setActiveTab(info.tabId);
       useUvpd.getState().rescan();
     };
+    // Tema/aksen/densitas diubah dari halaman Options → terapkan langsung di sini.
+    const onStorage = (changes: Record<string, { newValue?: unknown }>, area: string) => {
+      if (area !== 'local' || !changes[K_UI]?.newValue) return;
+      const ui = changes[K_UI].newValue as Partial<{ theme: Theme; accent: Accent; density: Density }>;
+      useUvpd.setState({ theme: ui.theme ?? 'system', accent: ui.accent ?? 'azure', density: ui.density ?? 'comfortable' });
+    };
     browser.runtime.onMessage.addListener(onMsg);
     browser.tabs.onActivated.addListener(onActivated);
+    browser.storage.onChanged.addListener(onStorage);
     return () => {
       browser.runtime.onMessage.removeListener(onMsg);
       browser.tabs.onActivated.removeListener(onActivated);
+      browser.storage.onChanged.removeListener(onStorage);
     };
   }, []);
 }

@@ -13,6 +13,7 @@ import { t } from '@/i18n';
 import { smartName, viewKind, kindLabel, kindColorVar } from '@/ui/lib/media-view';
 import { attachEngine, type PlayerEngine, type QualityOption, type TrackOption, type EngineStats } from './engine';
 import { hostOf, getHostPref, getPosition, saveHostPref, savePosition } from './player-persist';
+import { getSettings, DEFAULT_KEYBINDS, DEFAULT_SETTINGS, type Keybinds, type PlayerAction } from '@/shared/store';
 import type { MediaItem } from '@/shared/types';
 import './player.css';
 
@@ -43,6 +44,9 @@ export function Player({ mediaId }: { mediaId?: string } = {}) {
 
   const [media, setMedia] = useState<MediaItem | null>(null);
   const [error, setError] = useState('');
+  // Preferensi dari Options (U6): keybind + autoplay/loop/kecepatan awal.
+  const [keybinds, setKeybinds] = useState<Keybinds>(DEFAULT_KEYBINDS);
+  const [playerPrefs, setPlayerPrefs] = useState(DEFAULT_SETTINGS.player);
   const [flash, setFlash] = useState('');
   const [backend, setBackend] = useState<'native' | 'hls' | 'dash' | ''>('');
 
@@ -73,6 +77,9 @@ export function Player({ mediaId }: { mediaId?: string } = {}) {
   const [preview, setPreview] = useState<{ show: boolean; x: number; time: number }>({ show: false, x: 0, time: 0 });
 
   useEffect(() => { abRef.current = ab; }, [ab]);
+  useEffect(() => {
+    getSettings().then((s) => { setKeybinds(s.keybinds); setPlayerPrefs(s.player); }).catch(() => {});
+  }, []);
 
   const flashMsg = useCallback((m: string) => { setFlash(m); window.setTimeout(() => setFlash((f) => (f === m ? '' : f)), 1400); }, []);
 
@@ -152,22 +159,27 @@ export function Player({ mediaId }: { mediaId?: string } = {}) {
 
     (async () => {
       try {
-        // pulihkan preferensi per-situs + posisi tonton
-        const [pref, pos] = await Promise.all([getHostPref(host), getPosition(media.id)]);
+        // Pulihkan preferensi per-situs + posisi tonton. Bila situs ini belum
+        // punya preferensi, pakai kecepatan awal dari Options.
+        const [pref, pos, settings] = await Promise.all([getHostPref(host), getPosition(media.id), getSettings()]);
         resumeRef.current = pos ?? null;
         if (pref) {
           video.volume = pref.volume; video.muted = pref.muted; video.playbackRate = pref.speed;
           setVolume(pref.volume); setMuted(pref.muted); setSpeed(pref.speed);
+        } else {
+          video.playbackRate = settings.player.defaultSpeed;
+          setSpeed(settings.player.defaultSpeed);
         }
         if (disposed) return;
         // Dipanggil saat manifest siap. Untuk direct/native ini terpicu via microtask
         // SEBELUM `eng` di-assign — jadi baca dari engineRef, jangan dari `eng`.
+        const wantedSpeed = pref?.speed ?? settings.player.defaultSpeed;
         const onManifestReady = () => {
           if (disposed || !engineRef.current) return;
           setBackend(engineRef.current.backend);
           refreshTracks();
           maybeResume();
-          video.playbackRate = pref?.speed ?? 1;
+          video.playbackRate = wantedSpeed;
         };
         const eng = await attachEngine(video, media, onManifestReady);
         if (disposed) { eng.destroy(); return; }
@@ -175,7 +187,7 @@ export function Player({ mediaId }: { mediaId?: string } = {}) {
         setBackend(eng.backend);
         refreshTracks();
         maybeResume();
-        if (pref) video.playbackRate = pref.speed;
+        video.playbackRate = wantedSpeed;
       } catch (e) {
         if (!disposed) setError(String(e));
       }
@@ -309,39 +321,45 @@ export function Player({ mediaId }: { mediaId?: string } = {}) {
     const onKey = (e: KeyboardEvent) => {
       const el = e.target as HTMLElement | null;
       if (el && (el.tagName === 'INPUT' || el.tagName === 'SELECT' || el.tagName === 'TEXTAREA' || el.isContentEditable)) return;
-      let handled = true;
-      switch (e.key) {
-        case ' ': case 'k': togglePlay(); break;
-        case 'ArrowLeft': seekBy(-5); break;
-        case 'ArrowRight': seekBy(5); break;
-        case 'j': seekBy(-10); break;
-        case 'l': seekBy(10); break;
-        case 'ArrowUp': setVol((videoRef.current?.volume ?? 1) + 0.05); break;
-        case 'ArrowDown': setVol((videoRef.current?.volume ?? 1) - 0.05); break;
-        case 'm': toggleMute(); break;
-        case 'f': toggleFullscreen(); break;
-        case 'p': togglePip(); break;
-        case 'c': cycleSubtitle(); break;
-        case ',': frameStep(-1); break;
-        case '.': frameStep(1); break;
-        case '<': changeSpeed(Math.max(0.25, (videoRef.current?.playbackRate ?? 1) - 0.25)); break;
-        case '>': changeSpeed(Math.min(2, (videoRef.current?.playbackRate ?? 1) + 0.25)); break;
-        case 'a': setLoopPoint('a'); break;
-        case 'b': setLoopPoint('b'); break;
-        case 'u': setAb({ a: null, b: null }); flashMsg(t('player.loopClear')); break;
-        case 's': screenshot(); break;
-        case 'd': setShowStats((s) => !s); break;
-        case '?': setShowHelp((s) => !s); break;
-        case 'Escape': setShowHelp(false); setMenu(''); break;
-        default:
-          if (/^[0-9]$/.test(e.key)) { const v = videoRef.current; if (v && isFinite(v.duration)) v.currentTime = (Number(e.key) / 10) * v.duration; }
-          else handled = false;
+      // Keybind dapat diatur user di Options → petakan tombol ke aksi.
+      if (e.key === 'Escape') { setShowHelp(false); setMenu(''); e.preventDefault(); return; }
+      const action = (Object.keys(keybinds) as PlayerAction[]).find((a) => keybinds[a] === e.key);
+      if (!action) {
+        // Alias tetap: k = putar/jeda, < > = kecepatan, 0–9 = lompat persen.
+        if (e.key === 'k') togglePlay();
+        else if (e.key === '<') changeSpeed(Math.max(0.25, (videoRef.current?.playbackRate ?? 1) - 0.25));
+        else if (e.key === '>') changeSpeed(Math.min(2, (videoRef.current?.playbackRate ?? 1) + 0.25));
+        else if (/^[0-9]$/.test(e.key)) { const v = videoRef.current; if (v && isFinite(v.duration)) v.currentTime = (Number(e.key) / 10) * v.duration; }
+        else return;
+        e.preventDefault();
+        return;
       }
-      if (handled) e.preventDefault();
+      switch (action) {
+        case 'playPause': togglePlay(); break;
+        case 'seekBack': seekBy(-5); break;
+        case 'seekFwd': seekBy(5); break;
+        case 'seekBack10': seekBy(-10); break;
+        case 'seekFwd10': seekBy(10); break;
+        case 'volUp': setVol((videoRef.current?.volume ?? 1) + 0.05); break;
+        case 'volDown': setVol((videoRef.current?.volume ?? 1) - 0.05); break;
+        case 'mute': toggleMute(); break;
+        case 'fullscreen': toggleFullscreen(); break;
+        case 'pip': togglePip(); break;
+        case 'subtitle': cycleSubtitle(); break;
+        case 'frameBack': frameStep(-1); break;
+        case 'frameFwd': frameStep(1); break;
+        case 'loopA': setLoopPoint('a'); break;
+        case 'loopB': setLoopPoint('b'); break;
+        case 'loopClear': setAb({ a: null, b: null }); flashMsg(t('player.loopClear')); break;
+        case 'screenshot': screenshot(); break;
+        case 'stats': setShowStats((s) => !s); break;
+        case 'help': setShowHelp((s) => !s); break;
+      }
+      e.preventDefault();
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [media, togglePlay, seekBy, setVol, toggleMute, toggleFullscreen, togglePip, cycleSubtitle, frameStep, changeSpeed, setLoopPoint, screenshot, flashMsg]);
+  }, [media, keybinds, togglePlay, seekBy, setVol, toggleMute, toggleFullscreen, togglePip, cycleSubtitle, frameStep, changeSpeed, setLoopPoint, screenshot, flashMsg]);
 
   // ---- auto-hide kontrol ----
   const nudge = useCallback(() => {
@@ -422,7 +440,7 @@ export function Player({ mediaId }: { mediaId?: string } = {}) {
       onMouseLeave={() => { if (videoRef.current && !videoRef.current.paused && !menu && !showHelp) setControlsVisible(false); }}
     >
       <div class="pp__stage" onClick={togglePlay} onDblClick={toggleFullscreen}>
-        <video ref={videoRef} autoplay playsinline crossorigin="anonymous" />
+        <video ref={videoRef} autoplay={playerPrefs.autoPlay} loop={playerPrefs.loop} playsinline crossorigin="anonymous" />
         {previewSrc && (
           <video ref={previewVideoRef} src={previewSrc} muted preload="auto" crossorigin="anonymous"
             style={{ display: 'none' }} onLoadedMetadata={() => { previewReadyRef.current = true; }} />

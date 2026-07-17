@@ -11,8 +11,11 @@
     "build:chrome": "cross-env TARGET=chrome vite build --outDir dist/chrome",
     "build:firefox": "cross-env TARGET=firefox vite build --outDir dist/firefox",
     "typecheck": "tsc --noEmit",
-    "zip:chrome": "cd dist/chrome && zip -r ../uvpd-chrome.zip .",
-    "zip:firefox": "cd dist/firefox && zip -r ../uvpd-firefox.zip ."
+    "build:store:chrome": "cross-env STORE=1 TARGET=chrome vite build --outDir dist/chrome",
+    "build:store:firefox": "cross-env STORE=1 TARGET=firefox vite build --outDir dist/firefox",
+    "package:chrome": "npm run build:store:chrome && node scripts/package.mjs chrome",
+    "package:firefox": "npm run build:store:firefox && node scripts/package.mjs firefox",
+    "package": "npm run package:chrome && npm run package:firefox"
   },
   "devDependencies": {
     "@crxjs/vite-plugin": "^2.0.0",

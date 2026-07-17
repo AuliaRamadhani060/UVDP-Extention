@@ -38,9 +38,16 @@ export default defineConfig({
         player: resolve(__dirname, 'src/ui/player/player.html'),
         offscreen: resolve(__dirname, 'src/offscreen/offscreen.html'),
         manager: resolve(__dirname, 'src/ui/manager/manager.html'),
+        onboarding: resolve(__dirname, 'src/ui/onboarding/onboarding.html'),
+        // @crxjs mengenali `side_panel` (Chromium) tapi TIDAK `sidebar_action`
+        // (Firefox) → tanpa entry manual, panel.html tak ikut ke dist/firefox
+        // dan sidebar Firefox rusak. Didaftarkan untuk kedua target.
+        panel: resolve(__dirname, 'src/ui/sidepanel/panel.html'),
       },
     },
     target: 'es2022',
-    sourcemap: true,
+    // Sourcemap hanya untuk build pengembangan. Paket store dibangun dengan
+    // STORE=1 → tanpa .map (paket jauh lebih kecil & tak membocorkan sumber).
+    sourcemap: process.env.STORE !== '1',
   },
 });

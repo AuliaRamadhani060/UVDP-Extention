@@ -13,6 +13,7 @@ import { noteQualityFile, clearQualityForTab } from './quality-grouper';
 import { ensureRefererRule, probeSize } from './referer-spoof';
 import { ensureOffscreen, pingOffscreen } from './offscreen-manager';
 import { broadcast } from '@/shared/messaging';
+import { getSettings } from '@/shared/store';
 import type { MediaItem } from '@/shared/types';
 
 const registry = new MediaRegistry();
@@ -134,6 +135,12 @@ async function initOffscreenDiagnostics(): Promise<void> {
   await patchDiagnostics({ offscreen: await pingOffscreen() });
 }
 
-browser.runtime.onInstalled.addListener(() => {
+browser.runtime.onInstalled.addListener((details: { reason?: string }) => {
   browser.contextMenus.create({ id: 'uvpd-open', title: 'UVPD', contexts: ['all'] });
+  // Onboarding first-run (U6): hanya saat instal baru, dan hanya sekali.
+  if (details.reason !== 'install') return;
+  getSettings().then((s) => {
+    if (s.onboarded) return;
+    browser.tabs.create({ url: browser.runtime.getURL('src/ui/onboarding/onboarding.html') });
+  }).catch(() => {});
 });
