@@ -47,7 +47,7 @@
   "content_scripts": [
     {
       "js": [
-        "assets/index.ts-loader-ChoHWHud.js"
+        "assets/index.ts-loader-CqA3g5Y2.js"
       ],
       "matches": [
         "<all_urls>"
@@ -75,11 +75,23 @@
       "resources": [
         "src/ui/player/player.html",
         "assets/browser-BoNqcQYh.js",
+        "assets/browser-BoNqcQYh.js.map",
         "assets/messaging-C46JWWw6.js",
-        "assets/url-utils-CWjXbvFi.js",
+        "assets/messaging-C46JWWw6.js.map",
+        "assets/media-utils-C3o731Ux.js",
+        "assets/media-utils-C3o731Ux.js.map",
         "assets/store-DYY30iuK.js",
-        "assets/index.ts-D6-Odkju.js",
-        "assets/hooks.ts-CT5-j4fB.js"
+        "assets/store-DYY30iuK.js.map",
+        "assets/index-UgbQ2hzD.js",
+        "assets/index-UgbQ2hzD.js.map",
+        "assets/actions-DujaUi0a.js",
+        "assets/actions-DujaUi0a.js.map",
+        "assets/CompactCard-D7rgXLSp.js",
+        "assets/CompactCard-D7rgXLSp.js.map",
+        "assets/index.ts-YCwF2jOM.js",
+        "assets/index.ts-YCwF2jOM.js.map",
+        "assets/hooks.ts-CT5-j4fB.js",
+        "assets/hooks.ts-CT5-j4fB.js.map"
       ],
       "use_dynamic_url": false
     }
