@@ -52,7 +52,6 @@ interface UvpdState {
   setDensity: (d: Density) => void;
   toggleFavorite: (url: string) => Promise<void>;
   play: (id: string) => void;
-  download: (id: string) => void;
   cancel: (id: string) => void;
   retry: (id: string) => void;
   copyFfmpeg: (id: string) => Promise<void>;
@@ -109,7 +108,8 @@ export const useUvpd = create<UvpdState>((set, get) => ({
   toggleFavorite: async (url) => set({ favorites: await persistToggleFav(url) }),
 
   play: (id) => sendUi({ type: 'PLAY_MEDIA', payload: { id } }),
-  download: (id) => sendUi({ type: 'DOWNLOAD_MEDIA', payload: { id } }),
+  // Catatan (M4): aksi `download` langsung DIHAPUS — semua unduh lewat Halaman
+  // Download (openDownloader) atau quick-download eksplisit (useQueue.download).
   cancel: (id) => sendUi({ type: 'DOWNLOAD_CANCEL', payload: { id } }),
   retry: (id) => sendUi({ type: 'DOWNLOAD_RETRY', payload: { id } }),
   copyFfmpeg: async (id) => {
