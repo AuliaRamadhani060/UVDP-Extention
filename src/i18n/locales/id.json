@@ -253,5 +253,13 @@
   "dlr.copyFfmpeg": "Salin perintah ffmpeg",
   "dlr.copied": "Disalin",
   "dlr.noPlan": "Analisis URL untuk melihat rencana.",
-  "dlr.quick": "Unduh cepat (kualitas terpilih)"
+  "dlr.quick": "Unduh cepat (kualitas terpilih)",
+  "fmt.original": "Asli",
+  "fmt.mp4": "MP4",
+  "fmt.mkv": "MKV",
+  "fmt.webm": "WebM",
+  "fmt.m4a": "Audio (M4A)",
+  "fmt.mp3": "Audio (MP3)",
+  "fmt.auto": "Otomatis (tanpa remux)",
+  "fmt.slow": "transcode, lambat"
 }

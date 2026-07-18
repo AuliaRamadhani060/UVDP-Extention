@@ -253,5 +253,13 @@
   "dlr.copyFfmpeg": "复制 ffmpeg 命令",
   "dlr.copied": "已复制",
   "dlr.noPlan": "分析 URL 以查看方案。",
-  "dlr.quick": "快速下载（所选画质）"
+  "dlr.quick": "快速下载（所选画质）",
+  "fmt.original": "原始",
+  "fmt.mp4": "MP4",
+  "fmt.mkv": "MKV",
+  "fmt.webm": "WebM",
+  "fmt.m4a": "音频 (M4A)",
+  "fmt.mp3": "音频 (MP3)",
+  "fmt.auto": "自动（不重封装）",
+  "fmt.slow": "转码，较慢"
 }

@@ -74,17 +74,19 @@ export type OffscreenRequest =
   | { type: 'RUN_FRAGMENTS'; payload: { id: string; segments: Array<{ url: string; range?: string | null }>; filename: string; mime: string } }
   | { type: 'RUN_RESUMABLE'; payload: { id: string; url: string; filename: string; parallel?: number; priorEtag?: string; priorLastModified?: string } }
   | { type: 'CONTROL_RESUMABLE'; payload: { id: string; action: 'pause' | 'cancel' } }
-  | { type: 'MUX_AV'; payload: { id: string; video: MuxFile; audio: MuxFile; outName: string } }
+  | { type: 'FFMPEG_RUN'; payload: { id: string; inputs: MuxFile[]; container: string; op: FfmpegOp } }
   | { type: 'REVOKE_BLOBS'; payload: { urls: string[] } };
 
 export interface MuxFile { blobUrl: string; filename: string }
+/** Operasi ffmpeg (M2) — cermin `FfmpegOp` di core/ffmpeg-mux. */
+export type FfmpegOp = 'mux' | 'remux' | 'audio' | 'transcode';
 
-/** offscreen → background: progres/hasil mux ffmpeg.wasm. */
-export interface MuxState {
-  type: 'MUX_STATE';
+/** offscreen → background: progres/hasil operasi ffmpeg.wasm. */
+export interface FfmpegState {
+  type: 'FFMPEG_STATE';
   payload: {
     id: string;
-    status: 'muxing' | 'complete' | 'error';
+    status: 'processing' | 'complete' | 'error';
     progress?: number; // 0..1
     blobUrl?: string;
     size?: number;
@@ -191,7 +193,7 @@ export type BroadcastMessage =
   | { type: 'DOWNLOAD_DONE'; payload: { id: string } }
   | { type: 'DOWNLOAD_ERROR'; payload: { id: string; error: string } }
   | ResumableState
-  | MuxState;
+  | FfmpegState;
 
 export type ContractMessage = BridgeMessage | UiMessage;
 

@@ -9,8 +9,6 @@ import type { MediaItem } from '@/shared/types';
 import type { SourcePlan, PlanQuality, PlanFormat } from '@/shared/contract';
 import { mediaKind, buildFfmpegCommand, mediaDisplayName } from './media-utils';
 
-const AFTER_M2 = 'after-m2'; // penanda: butuh transcode ffmpeg.wasm (M2)
-
 function extOf(url: string): string {
   const m = String(url || '').split(/[?#]/)[0].match(/\.([a-z0-9]{2,5})$/i);
   return m ? m[1].toLowerCase() : '';
@@ -42,23 +40,26 @@ function qualities(media: MediaItem): PlanQuality[] {
   return out;
 }
 
+// M2: ketersediaan NYATA. Core ffmpeg.wasm = build GPL penuh → remux/mux
+// (cepat, -c copy), ekstrak audio, dan transcode WebM (VP9/Opus, lambat) semua bisa.
 function directFormats(nativeExt: string): PlanFormat[] {
   const ext = nativeExt || 'mp4';
-  const out: PlanFormat[] = [{ container: ext, label: `Asli (.${ext})`, available: true }];
-  for (const c of ['mp4', 'mkv', 'webm', 'm4a', 'mp3']) {
-    if (c === ext) continue;
-    out.push({ container: c, label: c.toUpperCase(), available: false, needsTranscode: true, note: AFTER_M2 });
-  }
+  const out: PlanFormat[] = [{ container: 'original', label: `Asli (.${ext})`, available: true }];
+  if (ext !== 'mp4') out.push({ container: 'mp4', label: 'MP4 (remux)', available: true });
+  if (ext !== 'mkv') out.push({ container: 'mkv', label: 'MKV (remux)', available: true });
+  if (ext !== 'webm') out.push({ container: 'webm', label: 'WebM (transcode)', available: true, needsTranscode: true });
+  out.push({ container: 'm4a', label: 'Audio (M4A)', available: true });
+  out.push({ container: 'mp3', label: 'Audio (MP3)', available: true });
   return out;
 }
 function streamFormats(): PlanFormat[] {
   return [
-    { container: 'auto', label: 'Otomatis (remux dari sumber)', available: true },
-    { container: 'mp4', label: 'MP4', available: false, needsTranscode: true, note: AFTER_M2 },
-    { container: 'mkv', label: 'MKV', available: false, needsTranscode: true, note: AFTER_M2 },
-    { container: 'webm', label: 'WebM', available: false, needsTranscode: true, note: AFTER_M2 },
-    { container: 'm4a', label: 'Audio (M4A)', available: false, needsTranscode: true, note: AFTER_M2 },
-    { container: 'mp3', label: 'Audio (MP3)', available: false, needsTranscode: true, note: AFTER_M2 },
+    { container: 'mp4', label: 'MP4', available: true }, // default M2: satu berkas ter-mux
+    { container: 'mkv', label: 'MKV', available: true },
+    { container: 'auto', label: 'Otomatis (tanpa remux)', available: true },
+    { container: 'webm', label: 'WebM (transcode)', available: true, needsTranscode: true },
+    { container: 'm4a', label: 'Audio (M4A)', available: true },
+    { container: 'mp3', label: 'Audio (MP3)', available: true },
   ];
 }
 

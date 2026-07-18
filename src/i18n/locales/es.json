@@ -253,5 +253,13 @@
   "dlr.copyFfmpeg": "Copiar comando ffmpeg",
   "dlr.copied": "Copiado",
   "dlr.noPlan": "Analiza una URL para ver el plan.",
-  "dlr.quick": "Descarga rápida (calidad elegida)"
+  "dlr.quick": "Descarga rápida (calidad elegida)",
+  "fmt.original": "Original",
+  "fmt.mp4": "MP4",
+  "fmt.mkv": "MKV",
+  "fmt.webm": "WebM",
+  "fmt.m4a": "Audio (M4A)",
+  "fmt.mp3": "Audio (MP3)",
+  "fmt.auto": "Auto (sin remux)",
+  "fmt.slow": "transcodificacion, lento"
 }

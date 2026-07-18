@@ -253,5 +253,13 @@
   "dlr.copyFfmpeg": "نسخ أمر ffmpeg",
   "dlr.copied": "تم النسخ",
   "dlr.noPlan": "حلّل رابطًا لعرض الخطة.",
-  "dlr.quick": "تنزيل سريع (الجودة المختارة)"
+  "dlr.quick": "تنزيل سريع (الجودة المختارة)",
+  "fmt.original": "الأصلي",
+  "fmt.mp4": "MP4",
+  "fmt.mkv": "MKV",
+  "fmt.webm": "WebM",
+  "fmt.m4a": "صوت (M4A)",
+  "fmt.mp3": "صوت (MP3)",
+  "fmt.auto": "تلقائي (بدون إعادة تحزيم)",
+  "fmt.slow": "إعادة ترميز، بطيء"
 }

@@ -156,9 +156,9 @@ export function Downloader() {
                   </Field>
                   <Field label={t('dlr.format')}>
                     <select className={inputCls} style={inputStyle} value={container} onChange={(e) => setContainer((e.target as HTMLSelectElement).value)}>
-                      {plan.formats.map((f) => (
-                        <option key={f.container} value={f.container} disabled={!f.available}>
-                          {f.label}{f.available ? '' : ` — ${t('dlr.afterM2')}`}
+                      {plan.formats.filter((f) => f.available).map((f) => (
+                        <option key={f.container} value={f.container}>
+                          {t('fmt.' + f.container)}{f.needsTranscode ? ` · ${t('fmt.slow')}` : ''}
                         </option>
                       ))}
                     </select>

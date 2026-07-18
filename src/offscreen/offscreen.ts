@@ -6,7 +6,7 @@ import { parseDash } from '@/core/dash-parser';
 import { runSegmentedDownload } from '@/core/segmented-runner';
 import { downloadSegments } from '@/core/segment-downloader';
 import { runResumableDownload, isRangeUnsupported } from '@/core/resumable-download';
-import type { OffscreenRequest, OffscreenResponse, ResumableState, MuxState } from '@/shared/contract';
+import type { OffscreenRequest, OffscreenResponse, ResumableState, FfmpegState } from '@/shared/contract';
 
 // Kontrol jalannya unduhan resumable (pause/cancel) per-id.
 const resumableControl = new Map<string, { paused: boolean; canceled: boolean }>();
@@ -14,8 +14,8 @@ const resumableControl = new Map<string, { paused: boolean; canceled: boolean }>
 function emitResumable(payload: ResumableState['payload']): void {
   browser.runtime.sendMessage({ type: 'RESUMABLE_STATE', payload }).catch(() => {});
 }
-function emitMux(payload: MuxState['payload']): void {
-  browser.runtime.sendMessage({ type: 'MUX_STATE', payload }).catch(() => {});
+function emitFfmpeg(payload: FfmpegState['payload']): void {
+  browser.runtime.sendMessage({ type: 'FFMPEG_STATE', payload }).catch(() => {});
 }
 
 async function blobUrlToInput(url: string, filename: string): Promise<{ data: Uint8Array; filename: string }> {
@@ -62,19 +62,16 @@ browser.runtime.onMessage.addListener((
     return false;
   }
 
-  if (msg?.type === 'MUX_AV') {
-    const { id, video, audio, outName } = msg.payload;
+  if (msg?.type === 'FFMPEG_RUN') {
+    const { id, inputs, container, op } = msg.payload;
     (async () => {
       // Import DINAMIS: core ffmpeg.wasm (±32MB) hanya diunduh/dikompilasi di sini,
-      // saat user benar-benar menekan "Gabungkan" — bukan saat startup.
-      const { muxAudioVideo } = await import('@/core/ffmpeg-mux');
-      const [v, a] = await Promise.all([
-        blobUrlToInput(video.blobUrl, video.filename),
-        blobUrlToInput(audio.blobUrl, audio.filename),
-      ]);
-      const blob = await muxAudioVideo(v, a, outName, (ratio) => emitMux({ id, status: 'muxing', progress: ratio }));
-      emitMux({ id, status: 'complete', blobUrl: URL.createObjectURL(blob), size: blob.size });
-    })().catch((e) => emitMux({ id, status: 'error', error: String((e as Error)?.message || e) }));
+      // saat user benar-benar memilih format ffmpeg — bukan saat startup.
+      const { runFfmpegExport } = await import('@/core/ffmpeg-mux');
+      const ins = await Promise.all(inputs.map((f) => blobUrlToInput(f.blobUrl, f.filename)));
+      const blob = await runFfmpegExport(ins, container, op, (ratio) => emitFfmpeg({ id, status: 'processing', progress: ratio }));
+      emitFfmpeg({ id, status: 'complete', blobUrl: URL.createObjectURL(blob), size: blob.size });
+    })().catch((e) => emitFfmpeg({ id, status: 'error', error: String((e as Error)?.message || e) }));
     return false;
   }
 

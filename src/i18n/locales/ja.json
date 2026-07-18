@@ -253,5 +253,13 @@
   "dlr.copyFfmpeg": "ffmpeg コマンドをコピー",
   "dlr.copied": "コピーしました",
   "dlr.noPlan": "URL を解析すると計画が表示されます。",
-  "dlr.quick": "クイックダウンロード（選択画質）"
+  "dlr.quick": "クイックダウンロード（選択画質）",
+  "fmt.original": "元のまま",
+  "fmt.mp4": "MP4",
+  "fmt.mkv": "MKV",
+  "fmt.webm": "WebM",
+  "fmt.m4a": "音声 (M4A)",
+  "fmt.mp3": "音声 (MP3)",
+  "fmt.auto": "自動（リマックスなし）",
+  "fmt.slow": "トランスコード・低速"
 }
