@@ -181,7 +181,11 @@ function chooseStrategy(media: MediaItem, requested?: DownloadStrategy): Downloa
 }
 let orderSeq = 0;
 
-export function enqueue(media: MediaItem, opts: { strategy?: DownloadStrategy; quality?: string } = {}): void {
+function sanitizeName(name: string): string {
+  return String(name || 'video').replace(/[\\/:*?"<>|]+/g, '_').trim().slice(0, 150) || 'video';
+}
+
+export function enqueue(media: MediaItem, opts: { strategy?: DownloadStrategy; quality?: string; filename?: string; container?: string } = {}): void {
   if (media.protected) { notify('Media terproteksi/DRM — tidak diproses.'); return; }
 
   // Sudah ada job aktif untuk media ini → jangan gandakan.
@@ -197,10 +201,17 @@ export function enqueue(media: MediaItem, opts: { strategy?: DownloadStrategy; q
 
   const strategy = chooseStrategy(media, opts.strategy);
   const isStream = strategy === 'segmented';
-  const url = isStream ? media.url : pickUrl(media, opts.quality);
-  const filename = isStream
+  // URL: direct → varian per-kualitas; HLS → URL playlist varian bila kualitas
+  // dipilih (runner mengunduh kualitas itu langsung); DASH → master (best).
+  let url: string;
+  if (!isStream) url = pickUrl(media, opts.quality);
+  else if (media.kind === 'hls' && opts.quality) url = pickUrl(media, opts.quality);
+  else url = media.url;
+
+  const computed = isStream
     ? (buildDownloadFilename(media.pageUrl || media.url).replace(/\.[^./\\]+$/, '') || 'video') + '.mp4'
     : buildDownloadFilename(url);
+  const filename = opts.filename ? sanitizeName(opts.filename) : (computed || 'video');
   const job: Job = {
     id: media.id, mediaId: media.id, url, pageUrl: media.pageUrl, filename: filename || 'video',
     kind: media.kind, strategy, quality: opts.quality, status: 'queued', loaded: 0, total: media.sizeBytes || 0,

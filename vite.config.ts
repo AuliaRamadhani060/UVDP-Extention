@@ -39,6 +39,7 @@ export default defineConfig({
         offscreen: resolve(__dirname, 'src/offscreen/offscreen.html'),
         manager: resolve(__dirname, 'src/ui/manager/manager.html'),
         onboarding: resolve(__dirname, 'src/ui/onboarding/onboarding.html'),
+        downloader: resolve(__dirname, 'src/ui/downloader/downloader.html'),
         // @crxjs mengenali `side_panel` (Chromium) tapi TIDAK `sidebar_action`
         // (Firefox) → tanpa entry manual, panel.html tak ikut ke dist/firefox
         // dan sidebar Firefox rusak. Didaftarkan untuk kedua target.

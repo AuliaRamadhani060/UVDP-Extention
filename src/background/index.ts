@@ -14,7 +14,10 @@ import { ensureRefererRule, probeSize } from './referer-spoof';
 import { ensureOffscreen, pingOffscreen } from './offscreen-manager';
 import { broadcast } from '@/shared/messaging';
 import { getSettings } from '@/shared/store';
+import { buildPlan } from '@/core/download-plan';
+import { stableVideoId } from '@/core/url-utils';
 import type { MediaItem } from '@/shared/types';
+import type { SourcePlan } from '@/shared/contract';
 
 const registry = new MediaRegistry();
 const enrichRequested = new Set<string>();
@@ -25,7 +28,9 @@ registerRouter({
   registry,
   registerCandidate: (entry, tabId) => registerAndEnrich(entry, tabId),
   openPlayer,
+  openDownloader,
   analyzeUrl,
+  analyzeSource,
 });
 
 // Port streaming antrean unduhan (UI ⇄ background).
@@ -101,6 +106,10 @@ function registerAndEnrich(partial: Partial<MediaItem> & { url: string }, tabId?
   return item;
 }
 
+function classifyUrl(url: string): MediaItem['kind'] {
+  return /\.m3u8(\?|$)/i.test(url) ? 'hls' : /\.mpd(\?|$)/i.test(url) ? 'dash' : 'file';
+}
+
 /**
  * Analisis cepat URL yang di-paste/drop user (U5). Deteksi jenis dari URL lalu
  * daftarkan sebagai kandidat → enrichment/ukuran mengalir seperti media biasa.
@@ -108,8 +117,45 @@ function registerAndEnrich(partial: Partial<MediaItem> & { url: string }, tabId?
 function analyzeUrl(rawUrl: string, tabId?: number): void {
   const url = rawUrl.trim();
   if (!/^https?:\/\//i.test(url)) return;
-  const kind: MediaItem['kind'] = /\.m3u8(\?|$)/i.test(url) ? 'hls' : /\.mpd(\?|$)/i.test(url) ? 'dash' : 'file';
-  registerAndEnrich({ url, kind, source: 'text-scan', pageUrl: url, protected: false }, tabId);
+  registerAndEnrich({ url, kind: classifyUrl(url), source: 'text-scan', pageUrl: url, protected: false }, tabId);
+}
+
+/** M1: analisis penuh sumber → SourcePlan untuk Halaman Download. */
+async function analyzeSource(rawUrl: string, mediaId?: string, tabId?: number): Promise<SourcePlan> {
+  const fail = (error: string): SourcePlan => ({
+    ok: false, error, mediaId: mediaId || '', url: rawUrl || '', kind: 'unknown', protected: false,
+    qualities: [], formats: [], defaultFilename: 'video', strategies: [], limitations: [error],
+  });
+
+  let media = mediaId ? registry.get(mediaId) : undefined;
+  const url = (rawUrl || media?.url || '').trim();
+  if (!/^https?:\/\//i.test(url) && !media) return fail('Masukkan URL http(s) yang valid.');
+
+  if (!media) media = registry.get(stableVideoId(url, url));
+  if (!media) media = registerAndEnrich({ url, kind: classifyUrl(url), source: 'text-scan', pageUrl: url, protected: false }, tabId);
+
+  // Pastikan Referer host media terpasang → fetch manifest/unduh lolos hotlink.
+  if (/^https?:/.test(media.url) && media.pageUrl) await ensureRefererRule(media.url, media.pageUrl);
+
+  // Enrich stream bila belum ada varian (ambil kualitas dari manifest).
+  if ((media.kind === 'hls' || media.kind === 'dash') && !media.variants && !media.protected) {
+    try {
+      const patch = await enrichManifest(media.url, media.kind);
+      if (patch) media = registry.upsert({ id: media.id, url: media.url, tabId: media.tabId, ...patch });
+    } catch { /* biarkan rencana tanpa varian */ }
+  }
+  return buildPlan(media);
+}
+
+/** M1: buka tab Halaman Download, terisi otomatis dari media/URL. */
+function openDownloader(mediaId?: string, url?: string): void {
+  const m = mediaId ? registry.get(mediaId) : undefined;
+  if (m && /^https?:/.test(m.url) && m.pageUrl) ensureRefererRule(m.url, m.pageUrl);
+  const params = new URLSearchParams();
+  if (mediaId) params.set('mediaId', mediaId);
+  const u = url || m?.url;
+  if (u) params.set('url', u);
+  browser.tabs.create({ url: browser.runtime.getURL('src/ui/downloader/downloader.html') + '?' + params.toString() });
 }
 
 function openPlayer(id: string): void {

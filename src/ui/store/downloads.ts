@@ -5,7 +5,7 @@ import { useEffect } from 'react';
 import { browser } from '@/platform/browser';
 import { sendUi } from '@/shared/messaging';
 import { DOWNLOAD_PORT } from '@/shared/contract';
-import type { QueueJobView, QueueSnapshot, DownloadStrategy } from '@/shared/contract';
+import type { QueueJobView, QueueSnapshot, DownloadStrategy, SourcePlan } from '@/shared/contract';
 
 const SPARK_MAX = 40;
 
@@ -18,7 +18,9 @@ interface QueueState {
   ingest: (snap: QueueSnapshot) => void;
   setConnected: (v: boolean) => void;
   // aksi
-  download: (id: string, opts?: { strategy?: DownloadStrategy; quality?: string }) => void;
+  download: (id: string, opts?: { strategy?: DownloadStrategy; quality?: string; container?: string; filename?: string }) => void;
+  openDownloader: (mediaId?: string, url?: string) => void;
+  analyze: (url: string, mediaId?: string) => Promise<SourcePlan>;
   pause: (id: string) => void;
   resume: (id: string) => void;
   cancel: (id: string) => void;
@@ -49,7 +51,9 @@ export const useQueue = create<QueueState>((set, get) => ({
     set({ jobs: snap.jobs, history: snap.history, concurrency: snap.concurrency, spark: next });
   },
   setConnected: (connected) => set({ connected }),
-  download: (id, opts) => { sendUi({ type: 'DOWNLOAD_MEDIA', payload: { id, strategy: opts?.strategy, quality: opts?.quality } }); },
+  download: (id, opts) => { sendUi({ type: 'DOWNLOAD_MEDIA', payload: { id, strategy: opts?.strategy, quality: opts?.quality, container: opts?.container, filename: opts?.filename } }); },
+  openDownloader: (mediaId, url) => { sendUi({ type: 'OPEN_DOWNLOADER', payload: { mediaId, url } }); },
+  analyze: (url, mediaId) => sendUi<SourcePlan>({ type: 'ANALYZE_SOURCE', payload: { url, mediaId } }),
   pause: (id) => { sendUi({ type: 'DOWNLOAD_PAUSE', payload: { id } }); },
   resume: (id) => { sendUi({ type: 'DOWNLOAD_RESUME', payload: { id } }); },
   cancel: (id) => { sendUi({ type: 'DOWNLOAD_CANCEL', payload: { id } }); },

@@ -1,7 +1,7 @@
 // MediaCard (§4.5) — kartu media kaya: thumbnail/gradien per-kind, judul pintar,
 // strip provenance, tangga kualitas, aksi hover, dan progress unduhan.
 import { useState, type ReactNode } from 'react';
-import { Play, Download, Copy, Star, Terminal, ShieldAlert, Film, Radio, Captions } from 'lucide-react';
+import { Play, Download, Copy, Star, Terminal, ShieldAlert, Film, Radio, Captions, Zap } from 'lucide-react';
 import { useUvpd } from '@/ui/store/uvpd';
 import { useQueue } from '@/ui/store/downloads';
 import { ProvenanceStrip } from './ProvenanceStrip';
@@ -34,6 +34,7 @@ function IconBtn({ label, onClick, primary, active, children }: { label: string;
 export function MediaCard({ media, isMain }: { media: MediaItem; isMain?: boolean }) {
   const play = useUvpd((s) => s.play);
   const qDownload = useQueue((s) => s.download);
+  const openDownloader = useQueue((s) => s.openDownloader);
   const subtitle = useQueue((s) => s.subtitle);
   const copyFfmpeg = useUvpd((s) => s.copyFfmpeg);
   const toggleFavorite = useUvpd((s) => s.toggleFavorite);
@@ -127,9 +128,14 @@ export function MediaCard({ media, isMain }: { media: MediaItem; isMain?: boolea
         {/* Aksi */}
         <div className="mt-1 flex flex-wrap items-center gap-1.5">
           {canDownload && (
-            <IconBtn label={isCapture ? t('mse.save') : t('media.download')} onClick={() => qDownload(media.id, { quality })} primary>
+            // M1: Unduh MEMBUKA Halaman Download (pre-filled), bukan unduh langsung.
+            <IconBtn label={isCapture ? t('mse.save') : t('media.download')} onClick={() => openDownloader(media.id)} primary>
               <Download size={13} /> {isCapture ? t('mse.save') : t('media.download')}
             </IconBtn>
+          )}
+          {canDownload && !isCapture && (
+            // Quick-download eksplisit: langsung antre kualitas terpilih tanpa halaman.
+            <IconBtn label={t('dlr.quick')} onClick={() => qDownload(media.id, { quality })}><Zap size={13} /></IconBtn>
           )}
           {canDownload && variants.length > 1 && (
             <select

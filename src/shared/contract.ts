@@ -42,7 +42,9 @@ export type UiMessage =
   | { type: 'GET_MEDIA'; payload: { id: string } }
   | { type: 'GET_DIAGNOSTICS' }
   | { type: 'PLAY_MEDIA'; payload: { id: string } }
-  | { type: 'DOWNLOAD_MEDIA'; payload: { id: string; strategy?: DownloadStrategy; quality?: string } }
+  | { type: 'ANALYZE_SOURCE'; payload: { url: string; mediaId?: string } }
+  | { type: 'OPEN_DOWNLOADER'; payload: { mediaId?: string; url?: string } }
+  | { type: 'DOWNLOAD_MEDIA'; payload: { id: string; strategy?: DownloadStrategy; quality?: string; container?: string; filename?: string } }
   | { type: 'DOWNLOAD_CANCEL'; payload: { id: string } }
   | { type: 'DOWNLOAD_PAUSE'; payload: { id: string } }
   | { type: 'DOWNLOAD_RESUME'; payload: { id: string } }
@@ -143,6 +145,42 @@ export interface QueueSnapshot {
   jobs: QueueJobView[];
   history: QueueJobView[];
   concurrency: number;
+}
+
+// --- Rencana sumber unduhan (M1, Halaman Download) ---
+export interface PlanQuality {
+  value: string; // '' = auto/terbaik; selain itu resolusi (mis. '1080p')
+  label: string;
+  height?: number;
+  bitrate?: number;
+  url?: string; // URL varian (untuk direct swap / HLS playlist per-kualitas)
+  best?: boolean;
+}
+export interface PlanFormat {
+  container: string; // 'mp4' | 'mkv' | 'webm' | 'm4a' | 'mp3' | 'auto' | ext asli
+  label: string;
+  available: boolean; // false = butuh transcode (M2)
+  needsTranscode?: boolean;
+  note?: string; // 'after-m2' → UI tampilkan "tersedia setelah M2"
+}
+export interface SourcePlan {
+  ok: boolean; // false bila terproteksi/tak bisa diproses
+  error?: string;
+  mediaId: string;
+  url: string;
+  pageUrl?: string;
+  kind: MediaKind | 'direct';
+  protected: boolean;
+  protectionType?: string;
+  qualities: PlanQuality[];
+  formats: PlanFormat[];
+  defaultFilename: string;
+  strategies: DownloadStrategy[];
+  limitations: string[];
+  sizeBytes?: number;
+  durationSec?: number;
+  itemCount?: number;
+  ffmpeg?: string; // perintah ffmpeg fallback (stream)
 }
 
 // --- ③ background → UI (broadcast) ---

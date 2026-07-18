@@ -1,7 +1,7 @@
 // Router pesan kontrak §7 (Blueprint §5.4c) — satu titik masuk.
 // Didaftarkan top-level & sinkron saat SW start (jebakan §9).
 import { browser } from '@/platform/browser';
-import { isContractMessage, type ContractMessage, type Diagnostics, type DiagChain } from '@/shared/contract';
+import { isContractMessage, type ContractMessage, type Diagnostics, type DiagChain, type SourcePlan } from '@/shared/contract';
 import type { MediaRegistry } from '@/core/media-registry';
 import type { MediaItem } from '@/shared/types';
 import { getSettings, saveSettings, type Settings } from '@/shared/store';
@@ -21,6 +21,10 @@ export interface RouterDeps {
   openPlayer: (id: string) => void;
   /** Analisis cepat URL yang di-paste/drop user (U5). */
   analyzeUrl: (url: string, tabId?: number) => void;
+  /** M1: buka Halaman Download pre-filled. */
+  openDownloader: (mediaId?: string, url?: string) => void;
+  /** M1: analisis penuh sumber → SourcePlan. */
+  analyzeSource: (url: string, mediaId?: string, tabId?: number) => Promise<SourcePlan>;
 }
 
 // --- Diagnostik (Fase 0) di storage.session → tahan SW tidur (§9) ---
@@ -92,9 +96,17 @@ export function registerRouter(deps: RouterDeps): void {
         deps.openPlayer(msg.payload.id);
         return false;
       }
+      case 'ANALYZE_SOURCE': {
+        deps.analyzeSource(msg.payload.url, msg.payload.mediaId, sender.tab?.id).then(sendResponse);
+        return true;
+      }
+      case 'OPEN_DOWNLOADER': {
+        deps.openDownloader(msg.payload.mediaId, msg.payload.url);
+        return false;
+      }
       case 'DOWNLOAD_MEDIA': {
         const m = registry.get(msg.payload.id);
-        if (m) enqueue(m, { strategy: msg.payload.strategy, quality: msg.payload.quality });
+        if (m) enqueue(m, { strategy: msg.payload.strategy, quality: msg.payload.quality, container: msg.payload.container, filename: msg.payload.filename });
         return false;
       }
       case 'DOWNLOAD_CANCEL': {
