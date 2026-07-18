@@ -30,3 +30,12 @@ body { margin: 0; }
 .pbtn:hover { background: var(--bg-hover); }
 .pbtn--primary { background: var(--accent); border-color: var(--accent); color: #fff; }
 .pcard__lock { color: var(--danger); display: grid; place-items: center; width: 30px; }
+
+/* M3: kontrol popup (filter + cari + quick-quality) */
+.pop__controls { display: flex; flex-direction: column; gap: var(--sp-2); padding: 0 var(--sp-3) var(--sp-2); }
+.pop__filters { display: flex; gap: 4px; flex-wrap: wrap; }
+.pchip { font-size: var(--fs-xs); padding: 3px 9px; border-radius: var(--radius-full); border: 1px solid var(--border); background: var(--surface); color: var(--text-muted); cursor: pointer; }
+.pchip.is-on { background: var(--accent); border-color: var(--accent); color: #fff; }
+.pop__search { width: 100%; box-sizing: border-box; padding: 6px 9px; font-size: var(--fs-sm); border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--bg-elev); color: var(--text); }
+.pop__search:focus { outline: none; border-color: var(--accent); }
+.pquality { height: 30px; font-size: 11px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface); color: var(--text); cursor: pointer; max-width: 84px; }

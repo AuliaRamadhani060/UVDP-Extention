@@ -9,6 +9,7 @@ import { classifyFromUrl, toMediaItem } from './detect';
 import { mseOpen, mseChunk, mseFinalize, findStreamIdByEntry } from './mse-capture';
 import { getSettings, isHostEnabled, pushHistory } from '@/shared/store';
 import { isListableMediaUrl } from '@/core/url-utils';
+import { mountDropdown } from './dropdown';
 import type { MediaItem, MediaKind } from '@/shared/types';
 
 const seen = new Set<string>();
@@ -52,6 +53,9 @@ async function boot(): Promise<void> {
   }
   observeDom(scan);
   setInterval(scan, settings.autoDetectIntervalMs);
+
+  // Dropdown in-page (M3) — hanya bila host tidak dinonaktifkan (enabled sudah dicek).
+  mountDropdown();
 }
 
 // Relay hook MAIN-world (hello/fetch/xhr/mse/eme) → background via kontrak §7.

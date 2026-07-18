@@ -4,6 +4,7 @@ import { create } from 'zustand';
 import { useEffect } from 'react';
 import { browser } from '@/platform/browser';
 import { sendUi } from '@/shared/messaging';
+import { mediaActions } from '@/shared/actions';
 import { DOWNLOAD_PORT } from '@/shared/contract';
 import type { QueueJobView, QueueSnapshot, DownloadStrategy, SourcePlan } from '@/shared/contract';
 
@@ -52,7 +53,7 @@ export const useQueue = create<QueueState>((set, get) => ({
   },
   setConnected: (connected) => set({ connected }),
   download: (id, opts) => { sendUi({ type: 'DOWNLOAD_MEDIA', payload: { id, strategy: opts?.strategy, quality: opts?.quality, container: opts?.container, filename: opts?.filename } }); },
-  openDownloader: (mediaId, url) => { sendUi({ type: 'OPEN_DOWNLOADER', payload: { mediaId, url } }); },
+  openDownloader: (mediaId, url) => { mediaActions.openDownloader(mediaId, url); },
   analyze: (url, mediaId) => sendUi<SourcePlan>({ type: 'ANALYZE_SOURCE', payload: { url, mediaId } }),
   pause: (id) => { sendUi({ type: 'DOWNLOAD_PAUSE', payload: { id } }); },
   resume: (id) => { sendUi({ type: 'DOWNLOAD_RESUME', payload: { id } }); },
